@@ -2580,6 +2580,42 @@ section {
   border-color: rgba(204,34,0,0.5);
   color: #fff;
 }
+.search-results {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  text-align: left;
+}
+.search-result-item:hover {
+  background: rgba(204,34,0,0.2);
+  border-color: rgba(204,34,0,0.4);
+}
+.search-result-emoji { font-size: 1.6rem; flex-shrink: 0; }
+.search-result-info { flex: 1; min-width: 0; }
+.search-result-name { font-size: 0.95rem; color: #fff; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-result-price { font-size: 0.82rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.search-result-add {
+  padding: 6px 14px; border-radius: 20px;
+  background: var(--red); color: #fff;
+  font-size: 0.78rem; font-weight: 700;
+  flex-shrink: 0; transition: opacity .2s;
+}
+.search-result-add:hover { opacity: 0.85; }
+.search-no-results { color: rgba(255,255,255,0.35); font-size: 0.9rem; text-align: center; padding: 20px 0; }
 
 /* === PRODUCT MODAL === */
 #product-modal {
@@ -2894,7 +2930,7 @@ section {
 }
 .mob-nav-inner {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   height: 62px;
 }
 .mob-nav-btn {
@@ -4599,6 +4635,7 @@ html, body, *, *::before, *::after { cursor: none !important; }
       <button class="search-tag">Кастрюли</button>
       <button class="search-tag">Акции</button>
     </div>
+    <div class="search-results" id="search-results"></div>
   </div>
 </div>
 
@@ -4751,10 +4788,6 @@ html, body, *, *::before, *::after { cursor: none !important; }
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       <span id="mob-lbl-catalog">Каталог</span>
     </a>
-    <button class="mob-nav-btn" id="mob-search-btn">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span id="mob-lbl-search">Поиск</span>
-    </button>
     <button class="mob-nav-btn" id="mob-cart-btn">
       <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       <span class="mob-cart-badge hidden" id="mob-cart-count">0</span>
@@ -5338,7 +5371,7 @@ function initCart() {
 }
 
 function addToCart(id) {
-  const product = PRODUCTS.find(p => p.id === id);
+  const product = PRODUCTS.find(p => p.id === id) || CATALOG.find(p => p.id === id);
   if (!product) return;
 
   const existing = cart.find(item => item.id === id);
@@ -5349,7 +5382,8 @@ function addToCart(id) {
   }
   saveCart();
   updateCartDisplay();
-  showToast(product.nameKey[currentLang], T[currentLang].toast.added);
+  const productName = product.nameKey ? product.nameKey[currentLang] : (product.name[currentLang] || product.name['en']);
+  showToast(productName, T[currentLang].toast.added);
 
   // Fly to cart animation
   const btn = document.querySelector(`.add-to-cart-btn[data-id="${id}"]`);
@@ -5427,13 +5461,14 @@ function updateCartDisplay() {
     `;
   } else {
     body.innerHTML = cart.map(item => {
-      const p = PRODUCTS.find(pr => pr.id === item.id);
+      const p = PRODUCTS.find(pr => pr.id === item.id) || CATALOG.find(pr => pr.id === item.id);
       if (!p) return '';
+      const itemName = p.nameKey ? p.nameKey[currentLang] : (p.name[currentLang] || p.name['en']);
       return `
         <div class="cart-item">
           <div class="cart-item-art" style="background:rgba(204,34,0,0.1);">${p.emoji}</div>
           <div class="cart-item-info">
-            <div class="cart-item-name">${p.nameKey[currentLang]}</div>
+            <div class="cart-item-name">${itemName}</div>
             <div class="cart-item-price">$${(p.price * item.qty).toFixed(2)}</div>
           </div>
           <div class="cart-item-qty">
@@ -5463,13 +5498,47 @@ function updateCartDisplay() {
    ============================================================ */
 function initSearch() {
   const overlay = document.getElementById('search-overlay');
-  document.getElementById('search-btn')?.addEventListener('click', () => overlay?.classList.add('open'));
-  document.getElementById('search-close')?.addEventListener('click', () => overlay?.classList.remove('open'));
+  const input   = document.getElementById('search-input');
+  const results = document.getElementById('search-results');
+  const tags    = document.getElementById('search-tags');
+
+  function renderSearchResults(q) {
+    if (!results) return;
+    if (!q) { results.innerHTML = ''; if (tags) tags.style.display = ''; return; }
+    if (tags) tags.style.display = 'none';
+    const lang = currentLang;
+    const allProducts = [
+      ...PRODUCTS.map(p => ({ id: p.id, name: p.nameKey[lang] || p.nameKey['en'], price: p.price, emoji: p.emoji })),
+      ...CATALOG.map(p => ({ id: p.id, name: p.name[lang] || p.name['en'], price: p.price, emoji: p.emoji }))
+    ];
+    const matches = allProducts.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
+    if (matches.length === 0) {
+      results.innerHTML = `<div class="search-no-results">${lang === 'ru' ? 'Ничего не найдено' : 'Nothing found'}</div>`;
+      return;
+    }
+    results.innerHTML = matches.slice(0, 8).map(p => `
+      <button class="search-result-item" onclick="addToCart(${p.id});this.querySelector('.search-result-add').textContent='✓'">
+        <span class="search-result-emoji">${p.emoji}</span>
+        <div class="search-result-info">
+          <div class="search-result-name">${p.name}</div>
+          <div class="search-result-price">$${p.price}</div>
+        </div>
+        <span class="search-result-add">${T[lang]?.products?.add || 'В корзину'}</span>
+      </button>
+    `).join('');
+  }
+
+  document.getElementById('search-btn')?.addEventListener('click', () => { overlay?.classList.add('open'); setTimeout(() => input?.focus(), 100); });
+  document.getElementById('search-close')?.addEventListener('click', () => { overlay?.classList.remove('open'); if (input) { input.value = ''; renderSearchResults(''); } });
+  input?.addEventListener('input', () => renderSearchResults(input.value.trim()));
+  document.querySelectorAll('.search-tag').forEach(tag => {
+    tag.addEventListener('click', () => { if (input) { input.value = tag.textContent; renderSearchResults(tag.textContent); } });
+  });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') overlay?.classList.remove('open');
+    if (e.key === 'Escape') { overlay?.classList.remove('open'); if (input) { input.value = ''; renderSearchResults(''); } }
   });
   overlay?.addEventListener('click', (e) => {
-    if (e.target === overlay) overlay.classList.remove('open');
+    if (e.target === overlay) { overlay.classList.remove('open'); if (input) { input.value = ''; renderSearchResults(''); } }
   });
 }
 
@@ -6142,16 +6211,6 @@ function initMobileNav() {
       const drawer = document.getElementById('cart-drawer');
       if (drawer) drawer.classList.add('open');
       updateMobCartBadge();
-    }, 50);
-  });
-
-  const mobSearchBtn = document.getElementById('mob-search-btn');
-  if (mobSearchBtn) mobSearchBtn.addEventListener('click', () => {
-    closeCatalogPage();
-    setTimeout(() => {
-      const overlay = document.getElementById('search-overlay');
-      if (overlay) overlay.classList.add('active');
-      setTimeout(() => { const inp = document.getElementById('search-input'); if (inp) inp.focus(); }, 150);
     }, 50);
   });
 
