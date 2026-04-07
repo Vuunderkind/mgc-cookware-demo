@@ -6175,14 +6175,13 @@ function initMobileNav() {
     const el = document.getElementById(id); if (el) io.observe(el);
   });
 
-  nav.querySelectorAll('a[href^="#"]').forEach(a => {
+  nav.querySelectorAll('a[href^="#"]:not(#mob-catalog)').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
       const href = a.getAttribute('href');
       const catalogOpen = document.getElementById('catalog-page')?.classList.contains('open');
       if (catalogOpen) {
         closeCatalogPage();
-        // wait for overlay to close + body overflow to clear before scrolling
         setTimeout(() => {
           const target = document.querySelector(href);
           if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
