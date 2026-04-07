@@ -30,8 +30,8 @@ Everything — HTML, CSS, and JS — lives in a **single `index.html` file** tha
 |---|---|
 | 🌍 **5 Languages** | Russian · English · German · French · Chinese |
 | 🌓 **Dark / Light theme** | Smooth CSS variable switching |
-| 🧊 **3D Interactive Pot** | Three.js r128 · PBR materials · Free rotation |
-| 🐊 **Procedural Croc Texture** | Canvas-generated Voronoi scale pattern + Sobel normal map |
+| 🍳 **Canvas 2D Cooking Scene** | Animated pot with flames, boiling liquid, steam burst, lid animation |
+| 🔥 **Interactive Lid** | Hover to lift the lid — steam pours out from the open pot |
 | 🛒 **Shopping Cart** | Add / remove / quantity · persists in session |
 | 🔍 **Live Search** | Real-time product filtering |
 | ✉️ **Newsletter + Contact** | Animated forms with validation |
@@ -43,15 +43,16 @@ Everything — HTML, CSS, and JS — lives in a **single `index.html` file** tha
 
 ---
 
-## ✦ 3D Hero Object
+## ✦ Hero Animation
 
-The hero section features an interactive **3D MGC cookware pot** rendered with [Three.js](https://threejs.org/):
+The hero section features a hand-crafted **Canvas 2D cooking scene** — no external libraries:
 
-- **Geometry** — `LatheGeometry` casserole body, domed lid, `TubeGeometry` D-ring handles, CylinderGeometry induction base
-- **Materials** — `MeshPhysicalMaterial` with clearcoat, brushed metal, transparent glass lid, wood handles
-- **Texture** — procedural crocodile-skin using seeded PRNG + canvas polygon scales + Sobel-filter normal map
-- **Lighting** — 5-light studio rig: key · fill · rim · top · front
-- **Controls** — free drag rotation · smooth damping · hover highlights · click-to-focus · multilingual info panels
+- **Pot body** — bezier-curve casserole silhouette with 9-stop metallic gradient and rim highlight
+- **Boiling liquid** — dual sine-wave surface with animated color cycling (orange → deep red → gold) and rising bubbles
+- **Flame system** — particle pool with `screen` blend mode, each flame unique in size, hue and speed
+- **Steam** — soft wobbling puffs with radial gradients; when lid opens: massive burst of large fast clouds
+- **Lid animation** — on hover, lid smoothly rotates ~75° and lifts via `translate + rotate + scaleY` (perspective foreshortening), then returns on mouse-leave
+- **Handles** — D-ring bezier strokes with metallic gradient and specular highlight line
 
 ---
 
@@ -60,7 +61,7 @@ The hero section features an interactive **3D MGC cookware pot** rendered with [
 ```
 HTML5 · CSS3 (custom properties, grid, animations)
 Vanilla JavaScript (ES5 compatible)
-Three.js r128 (loaded async — never blocks page)
+Canvas 2D API (no libraries — all drawing from scratch)
 Google Fonts (Playfair Display · Inter)
 ```
 
@@ -76,7 +77,7 @@ Google Fonts (Playfair Display · Inter)
 
 ## ✦ How updates work
 
-This site is deployed via **GitHub Pages** from the `main` branch.  
+This site is deployed via **GitHub Pages** from the `master` branch.  
 Every time I push a change to `index.html`, the live link updates automatically within ~1 minute.
 
 ---
@@ -84,7 +85,7 @@ Every time I push a change to `index.html`, the live link updates automatically 
 <div align="center">
 
 **Built entirely by [Vuunderkind](https://github.com/Vuunderkind)**  
-*Design · Development · 3D · Textures · Animations — all mine*
+*Design · Development · Animations · Canvas Art — all mine*
 
 ---
 
