@@ -6131,16 +6131,22 @@ function initMobileNav() {
 
   const mobCartBtn = document.getElementById('mob-cart-btn');
   if (mobCartBtn) mobCartBtn.addEventListener('click', () => {
-    const drawer = document.getElementById('cart-drawer');
-    if (drawer) drawer.classList.add('open');
-    updateMobCartBadge();
+    closeCatalogPage();
+    setTimeout(() => {
+      const drawer = document.getElementById('cart-drawer');
+      if (drawer) drawer.classList.add('open');
+      updateMobCartBadge();
+    }, 50);
   });
 
   const mobSearchBtn = document.getElementById('mob-search-btn');
   if (mobSearchBtn) mobSearchBtn.addEventListener('click', () => {
-    const overlay = document.getElementById('search-overlay');
-    if (overlay) overlay.classList.add('active');
-    setTimeout(() => { const inp = document.getElementById('search-input'); if (inp) inp.focus(); }, 150);
+    closeCatalogPage();
+    setTimeout(() => {
+      const overlay = document.getElementById('search-overlay');
+      if (overlay) overlay.classList.add('active');
+      setTimeout(() => { const inp = document.getElementById('search-input'); if (inp) inp.focus(); }, 150);
+    }, 50);
   });
 
   // Catalog tab → open full-page catalog
@@ -6172,8 +6178,19 @@ function initMobileNav() {
   nav.querySelectorAll('a[href^="#"]').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
-      const target = document.querySelector(a.getAttribute('href'));
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const href = a.getAttribute('href');
+      const catalogOpen = document.getElementById('catalog-page')?.classList.contains('open');
+      if (catalogOpen) {
+        closeCatalogPage();
+        // wait for overlay to close + body overflow to clear before scrolling
+        setTimeout(() => {
+          const target = document.querySelector(href);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 380);
+      } else {
+        const target = document.querySelector(href);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     });
   });
 
