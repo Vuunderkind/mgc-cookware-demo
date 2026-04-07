@@ -3283,6 +3283,10 @@ body.cursor-mag #cursor-ring {
 }
 body.cursor-text #cursor-dot { width: 3px; height: 20px; border-radius: 2px; background: var(--red); }
 body.cursor-text #cursor-ring { opacity: 0; }
+/* Hide system cursor on desktop — custom cursor replaces it */
+@media (pointer: fine) {
+  *, *::before, *::after { cursor: none !important; }
+}
 @media (pointer: coarse) { #cursor-dot, #cursor-ring { display: none !important; } }
 
 /* ============================================================
