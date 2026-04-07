@@ -4734,6 +4734,7 @@ window.closeModal = closeModal;
   scene.addEventListener('touchend',   function() { hovering = false; }, { passive: true });
 
   var t = 0;
+  var lidOpen = 0; // 0 = closed, 1 = fully lifted & tilted
 
   /* ── Pot geometry helper ──────────────────────── */
   function P() {
@@ -4764,6 +4765,14 @@ window.closeModal = closeModal;
              vx: rnd(-0.25, 0.25), vy: rnd(-0.9, -0.4),
              life: 1, d: rnd(0.007, 0.015), sz: rnd(10, 26),
              wb: rnd(0, 6.28), ws: rnd(0.03, 0.08) };
+  }
+  function mkBurstSteam(p) {
+    /* big, fast steam that pours out of the open pot */
+    return { x: cx + rnd(-p.bw * 0.32, p.bw * 0.32),
+             y: p.top + rnd(-4, 8),
+             vx: rnd(-1.8, 1.8), vy: rnd(-4.2, -1.8),
+             life: 1, d: rnd(0.004, 0.009), sz: rnd(22, 52),
+             wb: rnd(0, 6.28), ws: rnd(0.02, 0.055) };
   }
   function mkSpark(p) {
     var a = rnd(0, 6.28), sp = rnd(2, 5.5);
@@ -4955,10 +4964,31 @@ window.closeModal = closeModal;
   function rLid(p) {
     var lidT = p.top - p.lh;
     var lw   = p.bw * 1.09;
-    var bounce = Math.sin(t * (hovering ? 1.85 : 1.1)) * (hovering ? 5 : 2);
+
+    /* ── Tilt transform ──────────────────────────────────────────
+       Pivot = right edge of lid base (like grabbing with right hand).
+       lidOpen 0→1 : lid lifts up-left and rotates ~75° clockwise,
+       foreshortening via scaleY = cos(angle) makes it look 3-D.
+    ─────────────────────────────────────────────────────────────── */
+    var angle  = lidOpen * 1.30;                   // 0 → ~74.5°
+    var scaleY = Math.max(0.04, Math.cos(angle));  // perspective
+    var pivX   = cx + lw * 0.40;                   // pivot: right edge area
+    var pivY   = p.top;
+    var tx     = lidOpen * p.bw * 0.22;            // drift right
+    var ty     = lidOpen * -p.bh * 0.62;           // lift up
+
+    /* gentle bounce only when fully closed */
+    var bounce = (1 - lidOpen) * Math.sin(t * 1.1) * 2;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = -5;
+    ctx.translate(pivX + tx, pivY + ty);
+    ctx.rotate(angle);           /* clockwise = right side dips */
+    ctx.scale(1, scaleY);
+    ctx.translate(-pivX, -pivY);
+
+    /* lid body */
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = -5;
     ctx.beginPath();
     ctx.moveTo(cx - lw / 2, p.top + bounce);
     ctx.bezierCurveTo(cx - lw / 2,    p.top - p.lh * 0.3 + bounce,
@@ -4980,6 +5010,7 @@ window.closeModal = closeModal;
     ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.restore();
 
+    /* knob */
     var ky = lidT - 3 + bounce - p.kr * 2;
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 10;
@@ -4991,6 +5022,8 @@ window.closeModal = closeModal;
     kg.addColorStop(1,    '#383838');
     ctx.fillStyle = kg; ctx.fill();
     ctx.restore();
+
+    ctx.restore(); /* end tilt transform */
   }
 
   function rSteam(p) {
@@ -5011,6 +5044,12 @@ window.closeModal = closeModal;
   /* ── Update ───────────────────────────────────── */
   function update(p) {
     t += 0.016;
+
+    /* ── lid open/close (smooth lerp) ── */
+    var lidTarget = hovering ? 1 : 0;
+    lidOpen += (lidTarget - lidOpen) * 0.065;
+
+    /* ── flames ── */
     var fr = hovering ? 3.8 : 1.9;
     if (Math.random() < fr) flames.push(mkFlame(p));
     flames.forEach(function(f) {
@@ -5020,15 +5059,25 @@ window.closeModal = closeModal;
     if (flames.length > 80) flames = flames.filter(function(f) { return f.life > 0; });
     else flames = flames.filter(function(f) { return f.life > 0; });
 
+    /* ── steam: gentle trickle normally, massive burst when lid open ── */
     if (Math.random() < 0.33) steams.push(mkSteam(p));
+    if (lidOpen > 0.25) {
+      /* 3-6 burst puffs per frame while lid is open */
+      var burstN = Math.ceil(lidOpen * 5);
+      for (var bi = 0; bi < burstN; bi++) {
+        if (Math.random() < lidOpen * 0.9) steams.push(mkBurstSteam(p));
+      }
+    }
     steams.forEach(function(s) { s.x += s.vx; s.y += s.vy; s.life -= s.d; });
-    if (steams.length > 40) steams = steams.filter(function(s) { return s.life > 0; });
+    if (steams.length > 120) steams = steams.filter(function(s) { return s.life > 0; });
     else steams = steams.filter(function(s) { return s.life > 0; });
 
+    /* ── sparks ── */
     if (hovering && Math.random() < 0.42) sparks.push(mkSpark(p));
     sparks.forEach(function(sp) { sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.15; sp.life -= sp.d; });
     sparks = sparks.filter(function(sp) { return sp.life > 0; });
 
+    /* ── bubbles ── */
     if (Math.random() < 0.22) bubbles.push(mkBubble(p));
     bubbles.forEach(function(b) { b.y += b.vy; b.life -= b.d; });
     if (bubbles.length > 28) bubbles = bubbles.filter(function(b) { return b.life > 0; });
