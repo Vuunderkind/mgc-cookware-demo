@@ -3355,33 +3355,14 @@ section {
 }
 
 /* ============================================================
-   CUSTOM CURSOR
+   CUSTOM CURSOR — LADLE
    ============================================================ */
-#cursor-dot, #cursor-ring {
+#cursor-ladle {
   position: fixed; top: 0; left: 0; pointer-events: none;
-  z-index: 99999; border-radius: 50%;
-  transform: translate(-50%, -50%);
-  will-change: transform;
+  z-index: 99999; width: 72px; height: 72px;
+  will-change: transform; transition: opacity .2s;
 }
-#cursor-dot {
-  width: 7px; height: 7px;
-  background: var(--red);
-  transition: width .15s, height .15s, background .2s, opacity .3s;
-}
-#cursor-ring {
-  width: 34px; height: 34px;
-  border: 1.5px solid rgba(204,34,0,0.55);
-  transition: width .25s cubic-bezier(.2,1,.3,1), height .25s cubic-bezier(.2,1,.3,1),
-              border-color .2s, background .2s, opacity .3s;
-}
-body.cursor-mag #cursor-dot { width: 0; height: 0; opacity: 0; }
-body.cursor-mag #cursor-ring {
-  width: 56px; height: 56px;
-  border-color: var(--red);
-  background: rgba(204,34,0,0.10);
-}
-body.cursor-text #cursor-dot { width: 3px; height: 20px; border-radius: 2px; background: var(--red); }
-body.cursor-text #cursor-ring { opacity: 0; }
+/* Drip particles container lives inside cursor-ladle canvas */
 /* Hide system cursor — custom cursor replaces it */
 html, body, *, *::before, *::after { cursor: none !important; }
 /* Restore on touch devices and show custom cursor elements */
@@ -4271,8 +4252,7 @@ html, body, *, *::before, *::after { cursor: none !important; }
 <body>
 
 <!-- Custom cursor -->
-<div id="cursor-dot"></div>
-<div id="cursor-ring"></div>
+<canvas id="cursor-ladle" aria-hidden="true"></canvas>
 
 <!-- Marquee ticker -->
 <div id="mgc-ticker">
@@ -6617,34 +6597,232 @@ function initMobileProductSwipe() {
    ============================================================ */
 function initCustomCursor() {
   if (window.matchMedia('(pointer: coarse)').matches) return;
-  const dot  = document.getElementById('cursor-dot');
-  const ring = document.getElementById('cursor-ring');
-  if (!dot || !ring) return;
-  let mx = -100, my = -100, rx = -100, ry = -100;
+  const cvs = document.getElementById('cursor-ladle');
+  if (!cvs) return;
 
-  document.addEventListener('mousemove', e => {
-    mx = e.clientX; my = e.clientY;
-    dot.style.transform = `translate(calc(-50% + ${mx}px), calc(-50% + ${my}px))`;
-  });
-  document.addEventListener('mouseleave', () => { dot.style.opacity = '0'; ring.style.opacity = '0'; });
-  document.addEventListener('mouseenter', () => { dot.style.opacity = '1'; ring.style.opacity = '1'; });
+  const DPR  = Math.min(window.devicePixelRatio || 1, 2);
+  const SIZE = 72;
+  cvs.width  = SIZE * DPR;
+  cvs.height = SIZE * DPR;
+  cvs.style.width  = SIZE + 'px';
+  cvs.style.height = SIZE + 'px';
+  const ctx = cvs.getContext('2d');
+  ctx.scale(DPR, DPR);
 
-  const magEls = document.querySelectorAll('button, a, .product-card, input, .tab-btn');
-  magEls.forEach(el => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('cursor-mag'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-mag'));
-  });
-  document.querySelectorAll('input, textarea').forEach(el => {
-    el.addEventListener('mouseenter', () => document.body.classList.add('cursor-text'));
-    el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-text'));
-  });
+  // Hot spot = bottom of ladle bowl (this point tracks the mouse)
+  const HSX = 14, HSY = 60;
 
-  (function animRing() {
-    rx += (mx - rx) * 0.13;
-    ry += (my - ry) * 0.13;
-    ring.style.transform = `translate(calc(-50% + ${rx}px), calc(-50% + ${ry}px))`;
-    requestAnimationFrame(animRing);
+  // Bowl center & handle endpoint (all in 72×72 canvas coords)
+  const BX = 17, BY = 52, BR = 13;       // bowl
+  const HX1 = 28, HY1 = 42;             // handle base (near bowl)
+  const HX2 = 63, HY2 = 10;             // handle tip
+
+  let mx = -200, my = -200;
+  let hoverT = 0, textT = 0;            // lerp 0→1
+  let swingT = 0, swinging = false;
+  let drips  = [];
+  let cursorState = 'normal';            // 'normal' | 'hover' | 'text'
+
+  /* ── draw ─────────────────────────────── */
+  function draw() {
+    ctx.clearRect(0, 0, SIZE, SIZE);
+
+    const sc    = 1 + hoverT * 0.16;
+    const swing = swinging ? Math.sin(swingT * Math.PI * 2) * 0.38 : 0;
+    const lean  = textT * 0.42;          // tilt right over text
+
+    ctx.save();
+    ctx.translate(HSX, HSY);
+    ctx.rotate(swing + lean);
+    ctx.scale(sc, sc);
+    ctx.translate(-HSX, -HSY);
+
+    /* shadow for whole ladle */
+    ctx.shadowColor   = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur    = 10;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 5;
+
+    /* ── handle ── */
+    const hg = ctx.createLinearGradient(HX1, HY1, HX2, HY2);
+    hg.addColorStop(0,    '#7a7a7a');
+    hg.addColorStop(0.12, '#d4d4d4');
+    hg.addColorStop(0.38, '#f2f2f2');
+    hg.addColorStop(0.60, '#c8c8c8');
+    hg.addColorStop(0.84, '#969696');
+    hg.addColorStop(1,    '#707070');
+    ctx.beginPath();
+    ctx.moveTo(HX1, HY1);
+    ctx.lineTo(HX2, HY2);
+    ctx.lineWidth   = 6.5;
+    ctx.lineCap     = 'round';
+    ctx.strokeStyle = hg;
+    ctx.stroke();
+
+    /* handle shine */
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath();
+    ctx.moveTo(HX1 - 1.5, HY1 + 1.5);
+    ctx.lineTo(HX2 - 1.5, HY2 + 1.5);
+    ctx.lineWidth   = 1.8;
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.stroke();
+
+    /* handle grip rings */
+    for (var gi = 0; gi < 3; gi++) {
+      var gf = 0.35 + gi * 0.18;
+      var gx = HX1 + (HX2 - HX1) * gf;
+      var gy = HY1 + (HY2 - HY1) * gf;
+      var ang = Math.atan2(HY2 - HY1, HX2 - HX1) + Math.PI / 2;
+      ctx.save();
+      ctx.translate(gx, gy);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(-3.5, 0);
+      ctx.lineTo(3.5, 0);
+      ctx.lineWidth   = 1.5;
+      ctx.strokeStyle = 'rgba(120,120,120,0.7)';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* handle end cap */
+    ctx.shadowColor = 'rgba(0,0,0,0.4)'; ctx.shadowBlur = 5;
+    ctx.beginPath(); ctx.arc(HX2, HY2, 4.5, 0, 6.28);
+    const cg = ctx.createRadialGradient(HX2 - 1.5, HY2 - 1.5, 0, HX2, HY2, 4.5);
+    cg.addColorStop(0, '#f2f2f2'); cg.addColorStop(1, '#808080');
+    ctx.fillStyle = cg; ctx.fill();
+
+    /* ── neck (bowl–handle connector) ── */
+    ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+    ctx.beginPath();
+    ctx.moveTo(HX1, HY1);
+    ctx.quadraticCurveTo(HX1 - 3, BY + 2, BX + BR - 2, BY);
+    ctx.lineWidth = 5; ctx.lineCap = 'round';
+    const ng = ctx.createLinearGradient(HX1, HY1, BX + BR, BY);
+    ng.addColorStop(0, '#c0c0c0'); ng.addColorStop(1, '#888');
+    ctx.strokeStyle = ng; ctx.stroke();
+
+    /* ── bowl silver rim ── */
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 6;
+    ctx.beginPath(); ctx.arc(BX, BY, BR + 2, 0, 6.28);
+    const rimG = ctx.createRadialGradient(BX - 4, BY - 4, 0, BX, BY, BR + 2);
+    rimG.addColorStop(0, '#d8d8d8'); rimG.addColorStop(0.5, '#b0b0b0'); rimG.addColorStop(1, '#585858');
+    ctx.fillStyle = rimG; ctx.fill();
+
+    /* ── bowl sauce/soup ── */
+    ctx.shadowColor = 'transparent';
+    ctx.beginPath(); ctx.arc(BX, BY, BR - 1, 0, 6.28);
+    const sq = ctx.createRadialGradient(BX - 4, BY - 5, 0, BX, BY, BR);
+    const hot = hoverT;
+    sq.addColorStop(0,    hot > 0.5 ? '#ff8060' : '#e86040');
+    sq.addColorStop(0.40, hot > 0.5 ? '#e03500' : '#c02500');
+    sq.addColorStop(0.72, '#8B1500');
+    sq.addColorStop(1,    '#3A0800');
+    ctx.fillStyle = sq; ctx.fill();
+
+    /* sauce highlight */
+    ctx.beginPath();
+    ctx.ellipse(BX - 3, BY - 4, 4.5, 2.5, -0.3, 0, 6.28);
+    ctx.fillStyle = 'rgba(255,210,190,0.48)'; ctx.fill();
+
+    /* tiny bubbles on sauce when hovered */
+    if (hoverT > 0.3) {
+      var now = Date.now() / 800;
+      for (var bi = 0; bi < 4; bi++) {
+        var bx2 = BX + Math.sin(now * 1.7 + bi * 1.9) * 4.5;
+        var by2 = BY + Math.cos(now * 1.3 + bi * 0.9) * 3;
+        ctx.beginPath(); ctx.arc(bx2, by2, 1.1, 0, 6.28);
+        ctx.strokeStyle = 'rgba(255,170,110,' + (hoverT * 0.85) + ')';
+        ctx.lineWidth = 0.9; ctx.stroke();
+      }
+    }
+
+    /* hover glow ring around bowl */
+    if (hoverT > 0.02) {
+      ctx.beginPath(); ctx.arc(BX, BY, BR + 2 + hoverT * 5, 0, 6.28);
+      ctx.strokeStyle = 'rgba(204,34,0,' + (hoverT * 0.55) + ')';
+      ctx.lineWidth   = 1.8;
+      ctx.shadowColor = 'rgba(204,34,0,' + (hoverT * 0.7) + ')';
+      ctx.shadowBlur  = 12;
+      ctx.stroke();
+    }
+
+    ctx.restore(); /* end rotation/scale */
+
+    /* ── drip particles (absolute to canvas) ── */
+    drips.forEach(function(d) {
+      var r = d.r * d.life;
+      if (r < 0.4) return;
+      /* teardrop shape */
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      ctx.rotate(Math.atan2(d.vy, d.vx));
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, 6.28);
+      ctx.fillStyle = 'rgba(' + d.col + ',' + (d.life * 0.9) + ')';
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  /* ── RAF loop ─────────────────────────── */
+  (function raf() {
+    hoverT += ((cursorState === 'hover' ? 1 : 0) - hoverT) * 0.13;
+    textT  += ((cursorState === 'text'  ? 1 : 0) - textT)  * 0.13;
+
+    if (swinging) {
+      swingT = Math.min(swingT + 0.048, 1);
+      if (swingT >= 1) { swinging = false; swingT = 0; }
+    }
+
+    drips = drips.filter(function(d) {
+      d.x  += d.vx; d.y += d.vy;
+      d.vy += 0.18; d.vx *= 0.97;
+      d.life -= 0.030;
+      return d.life > 0;
+    });
+
+    draw();
+    requestAnimationFrame(raf);
   })();
+
+  /* ── events ───────────────────────────── */
+  document.addEventListener('mousemove', function(e) {
+    mx = e.clientX; my = e.clientY;
+    cvs.style.transform = 'translate(' + (mx - HSX) + 'px,' + (my - HSY) + 'px)';
+  });
+  document.addEventListener('mouseleave', function() { cvs.style.opacity = '0'; });
+  document.addEventListener('mouseenter', function() { cvs.style.opacity = '1'; });
+
+  /* click: stir swing + sauce drips */
+  document.addEventListener('mousedown', function() {
+    swinging = true; swingT = 0;
+    for (var i = 0; i < 10; i++) {
+      var ang = Math.PI * 0.7 + (Math.random() - 0.5) * 2.2;
+      var sp  = 1.8 + Math.random() * 3.8;
+      drips.push({
+        x: HSX + BX - HSX + (Math.random() - 0.5) * 6,
+        y: HSY + BY - HSY + (Math.random() - 0.5) * 6,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp - 1.8,
+        r:  2.5 + Math.random() * 2.8,
+        life: 1,
+        col: Math.random() > 0.4 ? '255,70,20' : '200,30,0'
+      });
+    }
+  });
+
+  /* hover states */
+  document.querySelectorAll('button, a, .product-card, .tab-btn, .cp-card, [role="button"], .mob-nav-btn').forEach(function(el) {
+    el.addEventListener('mouseenter', function() { cursorState = 'hover'; });
+    el.addEventListener('mouseleave', function() { cursorState = 'normal'; });
+  });
+  document.querySelectorAll('input, textarea, select').forEach(function(el) {
+    el.addEventListener('mouseenter', function() { cursorState = 'text'; });
+    el.addEventListener('mouseleave', function() { cursorState = 'normal'; });
+  });
 }
 
 /* ============================================================
@@ -7025,16 +7203,12 @@ function initCompare() {
 
   function resize() {
     var r = scene.getBoundingClientRect();
-    W = r.width  || 500;
-    H = r.height || 500;
-    cvs.width  = W * dpr;
-    cvs.height = H * dpr;
+    W = r.width  || 500; H = r.height || 500;
+    cvs.width = W * dpr; cvs.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = W * 0.5;
-    cy = H * 0.52;
+    cx = W * 0.5; cy = H * 0.52;
   }
-  resize();
-  window.addEventListener('resize', resize);
+  resize(); window.addEventListener('resize', resize);
 
   var hovering = false;
   scene.addEventListener('mouseenter', function() { hovering = true; });
@@ -7042,358 +7216,549 @@ function initCompare() {
   scene.addEventListener('touchstart', function() { hovering = true; }, { passive: true });
   scene.addEventListener('touchend',   function() { hovering = false; }, { passive: true });
 
-  var t = 0;
-  var lidOpen = 0; // 0 = closed, 1 = fully lifted & tilted
+  var t = 0, lidOpen = 0;
 
-  /* ── Pot geometry helper ──────────────────────── */
+  /* ── Geometry ───────────────────────────────────── */
   function P() {
-    var bw = W * 0.44, bh = H * 0.33;
+    var bw = W * 0.44, bh = H * 0.35;
     return {
       bw: bw, bh: bh,
-      top: cy - bh * 0.42,
-      bot: cy + bh * 0.58,
-      lh:  H  * 0.065,
-      kr:  W  * 0.028,
-      hw:  W  * 0.09
+      top: cy - bh * 0.44,
+      bot: cy + bh * 0.56,
+      lh:  H * 0.072,
+      kr:  W * 0.030,
+      hw:  W * 0.095
     };
   }
 
-  /* ── Particle pools ───────────────────────────── */
+  /* ── Particles ──────────────────────────────────── */
   var flames = [], steams = [], sparks = [], bubbles = [];
   function rnd(a, b) { return a + Math.random() * (b - a); }
 
   function mkFlame(p) {
-    return { x: cx + rnd(-p.bw * 0.30, p.bw * 0.30),
-             y: p.bot + rnd(2, 14),
-             vx: rnd(-0.5, 0.5), vy: rnd(-2.4, -1.1),
-             life: 1, d: rnd(0.020, 0.038), sz: rnd(7, 20), hue: rnd(8, 40) };
+    return { x: cx + rnd(-p.bw*.32, p.bw*.32), y: p.bot + rnd(2,16),
+             vx: rnd(-.6,.6), vy: rnd(-2.8,-1.2),
+             life:1, d:rnd(.018,.036), sz:rnd(8,24), hue:rnd(6,44) };
   }
   function mkSteam(p) {
-    return { x: cx + rnd(-p.bw * 0.22, p.bw * 0.22),
-             y: p.top - p.lh - rnd(2, 10),
-             vx: rnd(-0.25, 0.25), vy: rnd(-0.9, -0.4),
-             life: 1, d: rnd(0.007, 0.015), sz: rnd(10, 26),
-             wb: rnd(0, 6.28), ws: rnd(0.03, 0.08) };
+    return { x: cx + rnd(-p.bw*.20, p.bw*.20),
+             y: p.top - p.lh - rnd(2,12),
+             vx: rnd(-.3,.3), vy: rnd(-1.1,-.5),
+             life:1, d:rnd(.006,.013), sz:rnd(12,30), wb:rnd(0,6.28), ws:rnd(.025,.075) };
   }
   function mkBurstSteam(p) {
-    /* big, fast steam that pours out of the open pot */
-    return { x: cx + rnd(-p.bw * 0.32, p.bw * 0.32),
-             y: p.top + rnd(-4, 8),
-             vx: rnd(-1.8, 1.8), vy: rnd(-4.2, -1.8),
-             life: 1, d: rnd(0.004, 0.009), sz: rnd(22, 52),
-             wb: rnd(0, 6.28), ws: rnd(0.02, 0.055) };
+    return { x: cx + rnd(-p.bw*.35, p.bw*.35), y: p.top + rnd(-6,10),
+             vx: rnd(-2.2,2.2), vy: rnd(-5.0,-2.0),
+             life:1, d:rnd(.003,.008), sz:rnd(26,60), wb:rnd(0,6.28), ws:rnd(.015,.05) };
   }
   function mkSpark(p) {
-    var a = rnd(0, 6.28), sp = rnd(2, 5.5);
-    return { x: cx + rnd(-p.bw * 0.38, p.bw * 0.38),
-             y: p.bot + rnd(0, 18),
-             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
-             life: 1, d: rnd(0.04, 0.08), sz: rnd(1.5, 3.5) };
+    var a = rnd(0,6.28), sp = rnd(2.5,6);
+    return { x: cx + rnd(-p.bw*.38, p.bw*.38), y: p.bot + rnd(0,20),
+             vx: Math.cos(a)*sp, vy: Math.sin(a)*sp-3.5,
+             life:1, d:rnd(.038,.075), sz:rnd(1.5,3.8) };
   }
   function mkBubble(p) {
-    return { x: cx + rnd(-p.bw * 0.28, p.bw * 0.28),
-             y: p.top + p.bh * rnd(0.38, 0.56),
-             vy: rnd(-0.4, -0.2),
-             life: 1, d: rnd(0.014, 0.028), r: rnd(2, 5) };
+    return { x: cx + rnd(-p.bw*.30, p.bw*.30),
+             y: p.top + p.bh * rnd(.42,.60),
+             vy: rnd(-.5,-.25), life:1, d:rnd(.012,.026), r:rnd(2.5,6) };
   }
 
-  /* ── Pre-seed ──────────────────────────────────── */
   var _p0 = P();
-  for (var _i = 0; _i < 25; _i++) { var _f = mkFlame(_p0); _f.life = rnd(0.05, 0.9); flames.push(_f); }
-  for (var _i = 0; _i < 12; _i++) { var _s = mkSteam(_p0); _s.life = rnd(0.1, 0.8);  steams.push(_s); }
+  for (var _i=0; _i<30; _i++) { var _f=mkFlame(_p0); _f.life=rnd(.05,.9); flames.push(_f); }
+  for (var _i=0; _i<14; _i++) { var _s=mkSteam(_p0);  _s.life=rnd(.1,.8);  steams.push(_s); }
 
-  /* ── Body clip path ────────────────────────────── */
+  /* ── Clip path (pot silhouette) ─────────────────── */
   function bodyPath(p) {
-    var tw = p.bw, bw2 = p.bw * 0.86;
+    var tw = p.bw, bw2 = p.bw * 0.84;
     ctx.beginPath();
-    ctx.moveTo(cx - tw / 2, p.top);
-    ctx.bezierCurveTo(cx - tw / 2 - 6, p.top + p.bh * 0.33,
-                      cx - bw2 / 2 - 4, p.top + p.bh * 0.68,
-                      cx - bw2 / 2, p.bot);
-    ctx.lineTo(cx + bw2 / 2, p.bot);
-    ctx.bezierCurveTo(cx + bw2 / 2 + 4, p.top + p.bh * 0.68,
-                      cx + tw / 2 + 6,  p.top + p.bh * 0.33,
-                      cx + tw / 2, p.top);
+    ctx.moveTo(cx - tw/2, p.top);
+    ctx.bezierCurveTo(cx - tw/2 - 8, p.top + p.bh*.30, cx - bw2/2 - 5, p.top + p.bh*.68, cx - bw2/2, p.bot);
+    ctx.lineTo(cx + bw2/2, p.bot);
+    ctx.bezierCurveTo(cx + bw2/2 + 5, p.top + p.bh*.68, cx + tw/2 + 8, p.top + p.bh*.30, cx + tw/2, p.top);
     ctx.closePath();
   }
 
-  /* ── Draw layers ──────────────────────────────── */
+  /* ── Ground glow ────────────────────────────────── */
   function rGlow(p) {
-    var gr = ctx.createRadialGradient(cx, p.bot + 22, 0, cx, p.bot + 22, p.bw * 0.7);
-    gr.addColorStop(0, 'rgba(255,85,0,0.22)');
-    gr.addColorStop(0.55, 'rgba(200,45,0,0.08)');
-    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    /* ground reflection ellipse */
+    var gr = ctx.createRadialGradient(cx, p.bot+10, 0, cx, p.bot+10, p.bw*.85);
+    gr.addColorStop(0,   'rgba(255,90,0,0.28)');
+    gr.addColorStop(0.5, 'rgba(200,40,0,0.09)');
+    gr.addColorStop(1,   'rgba(0,0,0,0)');
     ctx.fillStyle = gr;
-    ctx.fillRect(cx - p.bw, p.bot - 18, p.bw * 2, p.bw * 0.9);
+    ctx.beginPath(); ctx.ellipse(cx, p.bot+10, p.bw*.85, p.bw*.22, 0, 0, 6.28); ctx.fill();
+    /* hover aura */
     if (hovering) {
-      var ga = ctx.createRadialGradient(cx, cy, p.bw * 0.3, cx, cy, p.bw * 0.88);
-      ga.addColorStop(0, 'rgba(204,34,0,0)');
-      ga.addColorStop(0.6, 'rgba(204,34,0,0.05)');
-      ga.addColorStop(1, 'rgba(204,34,0,0.16)');
+      var ga = ctx.createRadialGradient(cx, cy, p.bw*.25, cx, cy, p.bw*.92);
+      ga.addColorStop(0,   'rgba(204,34,0,0)');
+      ga.addColorStop(0.55,'rgba(204,34,0,0.06)');
+      ga.addColorStop(1,   'rgba(204,34,0,0.20)');
       ctx.fillStyle = ga;
-      ctx.beginPath(); ctx.arc(cx, cy, p.bw * 0.88, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, p.bw*.92, 0, 6.28); ctx.fill();
     }
   }
 
+  /* ── Flames ─────────────────────────────────────── */
   function rFlames(p) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
     flames.forEach(function(f) {
-      var r = f.sz * f.life;
-      if (r < 0.5) return;
-      var g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, r);
-      g.addColorStop(0,   'hsla(' + f.hue       + ',100%,82%,' + (f.life * 0.95) + ')');
-      g.addColorStop(0.4, 'hsla(' + (f.hue - 8) + ',100%,54%,' + (f.life * 0.55) + ')');
-      g.addColorStop(1,   'hsla(' + (f.hue - 18)+ ',100%,28%,0)');
+      var r = f.sz * f.life; if (r < .5) return;
+      var g = ctx.createRadialGradient(f.x,f.y,0, f.x,f.y,r);
+      g.addColorStop(0,  'hsla('+f.hue+',100%,84%,'+(f.life*.95)+')');
+      g.addColorStop(.4, 'hsla('+(f.hue-10)+',100%,56%,'+(f.life*.55)+')');
+      g.addColorStop(1,  'hsla('+(f.hue-22)+',100%,28%,0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(f.x,f.y,r,0,6.28); ctx.fill();
     });
     ctx.restore();
   }
 
+  /* ── Sparks ─────────────────────────────────────── */
   function rSparks() {
-    ctx.save();
-    ctx.globalCompositeOperation = 'screen';
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
     sparks.forEach(function(sp) {
-      var r = sp.sz * sp.life;
-      if (r < 0.3) return;
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, r, 0, 6.28);
-      ctx.fillStyle = 'hsla(30,100%,82%,' + sp.life + ')';
-      ctx.fill();
+      var r = sp.sz * sp.life; if (r < .3) return;
+      ctx.beginPath(); ctx.arc(sp.x,sp.y,r,0,6.28);
+      ctx.fillStyle = 'hsla(30,100%,85%,'+sp.life+')'; ctx.fill();
     });
     ctx.restore();
   }
 
+  /* ── Handles (cast iron look with heat glow) ───── */
   function rHandles(p) {
-    var cy0  = cy - p.bh * 0.10;
-    var htop = cy0 - p.bh * 0.13;
-    var hbot = cy0 + p.bh * 0.13;
-    [[-1, cx - p.bw / 2 - 2], [1, cx + p.bw / 2 + 2]].forEach(function(s) {
-      var dir = s[0], ix = s[1], ox = ix + dir * p.hw;
+    var hcy  = cy - p.bh * 0.10;
+    var htop = hcy - p.bh * 0.145;
+    var hbot = hcy + p.bh * 0.145;
+    var hw   = p.hw;
+
+    [[-1, cx - p.bw/2 - 1], [1, cx + p.bw/2 + 1]].forEach(function(s) {
+      var dir=s[0], ix=s[1], ox=ix+dir*hw;
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 10;
+
+      /* heat glow at attachment point */
+      if (hovering) {
+        var heatG = ctx.createRadialGradient(ix, hcy, 0, ix, hcy, p.hw*0.6);
+        heatG.addColorStop(0,   'rgba(255,100,0,0.35)');
+        heatG.addColorStop(0.5, 'rgba(200,40,0,0.12)');
+        heatG.addColorStop(1,   'rgba(200,40,0,0)');
+        ctx.fillStyle = heatG;
+        ctx.beginPath(); ctx.ellipse(ix, hcy, p.hw*.55, p.bh*.18, 0, 0, 6.28); ctx.fill();
+      }
+
+      /* handle shadow */
+      ctx.shadowColor='rgba(0,0,0,0.7)'; ctx.shadowBlur=14; ctx.shadowOffsetY=6;
+
+      /* handle body — thicker, more 3D */
       ctx.beginPath();
       ctx.moveTo(ix, htop);
-      ctx.bezierCurveTo(ix + dir * 9, htop - 9, ox - dir * 10, htop - 5, ox, cy0);
-      ctx.bezierCurveTo(ox - dir * 10, hbot + 5, ix + dir * 9, hbot + 9, ix, hbot);
+      ctx.bezierCurveTo(ix+dir*12, htop-12, ox-dir*14, htop-6, ox, hcy);
+      ctx.bezierCurveTo(ox-dir*14, hbot+6,  ix+dir*12, hbot+12, ix, hbot);
       var hg = ctx.createLinearGradient(0, htop, 0, hbot);
-      hg.addColorStop(0,   '#585858');
-      hg.addColorStop(0.3, '#e6e6e6');
-      hg.addColorStop(0.7, '#b4b4b4');
-      hg.addColorStop(1,   '#464646');
-      ctx.strokeStyle = hg; ctx.lineWidth = 11; ctx.lineCap = 'round'; ctx.stroke();
+      hg.addColorStop(0,   '#2a2a2a');
+      hg.addColorStop(0.18,'#8a8a8a');
+      hg.addColorStop(0.40,'#e0e0e0');
+      hg.addColorStop(0.60,'#c8c8c8');
+      hg.addColorStop(0.80,'#7a7a7a');
+      hg.addColorStop(1,   '#222222');
+      ctx.fillStyle = hg; ctx.fill();
+
+      /* handle shine */
+      ctx.shadowColor='transparent';
       ctx.beginPath();
-      ctx.moveTo(ix, htop + 4);
-      ctx.bezierCurveTo(ix + dir * 7, htop - 4, ox - dir * 8, htop + 2, ox, cy0);
-      ctx.strokeStyle = 'rgba(255,255,255,0.30)'; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.moveTo(ix, htop+5);
+      ctx.bezierCurveTo(ix+dir*9, htop-5, ox-dir*11, htop+1, ox, hcy-3);
+      ctx.strokeStyle='rgba(255,255,255,0.32)'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+
+      /* rivets at attachment */
+      [-1,1].forEach(function(rv) {
+        var ry2 = hcy + rv * p.bh * 0.065;
+        ctx.beginPath(); ctx.arc(ix + dir*3, ry2, 3.5, 0, 6.28);
+        var rg = ctx.createRadialGradient(ix+dir*2, ry2-1, 0, ix+dir*3, ry2, 3.5);
+        rg.addColorStop(0,'#e8e8e8'); rg.addColorStop(1,'#484848');
+        ctx.fillStyle=rg; ctx.fill();
+        ctx.strokeStyle='rgba(0,0,0,0.5)'; ctx.lineWidth=0.8; ctx.stroke();
+      });
+
+      /* handle outer edge */
+      ctx.beginPath();
+      ctx.moveTo(ix, htop);
+      ctx.bezierCurveTo(ix+dir*12, htop-12, ox-dir*14, htop-6, ox, hcy);
+      ctx.bezierCurveTo(ox-dir*14, hbot+6,  ix+dir*12, hbot+12, ix, hbot);
+      ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.lineWidth=1.2; ctx.stroke();
+
       ctx.restore();
     });
   }
 
+  /* ── Pot body (stainless steel / dark coated) ───── */
   function rBody(p) {
+    /* drop shadow */
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 42; ctx.shadowOffsetY = 20;
-    bodyPath(p); ctx.fillStyle = '#0f0f0f'; ctx.fill();
+    ctx.shadowColor='rgba(0,0,0,0.75)'; ctx.shadowBlur=50; ctx.shadowOffsetY=22;
+    bodyPath(p); ctx.fillStyle='#080808'; ctx.fill();
     ctx.restore();
 
+    /* base metal — dark coated look */
     bodyPath(p);
-    var g = ctx.createLinearGradient(cx - p.bw / 2 - 18, 0, cx + p.bw / 2 + 18, 0);
-    g.addColorStop(0,    '#131313');
-    g.addColorStop(0.07, '#3e3e3e');
-    g.addColorStop(0.21, '#808080');
-    g.addColorStop(0.37, '#d0d0d0');
-    g.addColorStop(0.50, '#f0f0f0');
-    g.addColorStop(0.63, '#c4c4c4');
-    g.addColorStop(0.79, '#727272');
-    g.addColorStop(0.93, '#383838');
-    g.addColorStop(1,    '#121212');
+    var g = ctx.createLinearGradient(cx - p.bw/2 - 20, 0, cx + p.bw/2 + 20, 0);
+    g.addColorStop(0,    '#0a0a0a');
+    g.addColorStop(0.05, '#1e1e1e');
+    g.addColorStop(0.14, '#484848');
+    g.addColorStop(0.26, '#888888');
+    g.addColorStop(0.38, '#c8c8c8');
+    g.addColorStop(0.50, '#e8e8e8');
+    g.addColorStop(0.62, '#bcbcbc');
+    g.addColorStop(0.74, '#787878');
+    g.addColorStop(0.86, '#3c3c3c');
+    g.addColorStop(0.95, '#181818');
+    g.addColorStop(1,    '#080808');
     ctx.fillStyle = g; ctx.fill();
 
-    bodyPath(p);
-    ctx.save(); ctx.clip();
-    var bg = ctx.createLinearGradient(0, p.top, 0, p.top + 22);
-    bg.addColorStop(0, 'rgba(204,34,0,0.72)');
-    bg.addColorStop(1, 'rgba(204,34,0,0)');
-    ctx.fillStyle = bg;
-    ctx.fillRect(cx - p.bw / 2 - 20, p.top, p.bw + 40, 22);
-    ctx.restore();
+    /* vertical brushed-metal bands */
+    bodyPath(p); ctx.save(); ctx.clip();
+    [0.18, 0.38, 0.52, 0.70, 0.83].forEach(function(xp) {
+      var bx = cx - p.bw/2 + p.bw * xp;
+      var band = ctx.createLinearGradient(bx - p.bw*.055, 0, bx + p.bw*.055, 0);
+      band.addColorStop(0,   'rgba(255,255,255,0)');
+      band.addColorStop(0.5, 'rgba(255,255,255,0.055)');
+      band.addColorStop(1,   'rgba(255,255,255,0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(bx - p.bw*.08, p.top, p.bw*.16, p.bh);
+    });
 
+    /* specular hot spot — upper center-right */
+    var spx = cx + p.bw*.08, spy = p.top + p.bh*.18;
+    var spG = ctx.createRadialGradient(spx, spy, 0, spx, spy, p.bw*.32);
+    spG.addColorStop(0,   'rgba(255,255,255,0.52)');
+    spG.addColorStop(0.35,'rgba(255,255,255,0.20)');
+    spG.addColorStop(0.7, 'rgba(255,255,255,0.05)');
+    spG.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = spG;
+    ctx.fillRect(cx - p.bw/2, p.top, p.bw, p.bh * .55);
+
+    /* brand red accent top band */
+    var rg = ctx.createLinearGradient(0, p.top, 0, p.top + 20);
+    rg.addColorStop(0, 'rgba(204,34,0,0.82)');
+    rg.addColorStop(1, 'rgba(204,34,0,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(cx - p.bw/2 - 5, p.top, p.bw + 10, 20);
+
+    /* bottom heat discoloration */
+    var bh2 = ctx.createLinearGradient(0, p.bot - p.bh*.30, 0, p.bot);
+    bh2.addColorStop(0,   'rgba(120,40,0,0)');
+    bh2.addColorStop(0.5, 'rgba(100,30,0,0.12)');
+    bh2.addColorStop(1,   'rgba(80,20,0,0.30)');
+    ctx.fillStyle = bh2;
+    ctx.fillRect(cx - p.bw/2 - 5, p.bot - p.bh*.30, p.bw + 10, p.bh*.30);
+
+    ctx.restore(); /* end clip */
+
+    /* edge outline */
     bodyPath(p);
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    /* bottom dark base ring */
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.36)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - p.bw*.84/2, p.bot);
+    ctx.lineTo(cx + p.bw*.84/2, p.bot);
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.lineWidth = 4; ctx.lineCap='round'; ctx.stroke();
     ctx.restore();
   }
 
+  /* ── Metallic rim at top of pot ─────────────────── */
+  function rRim(p) {
+    var rw = p.bw/2 + 4, rh = p.lh * 0.45;
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=10; ctx.shadowOffsetY=4;
+
+    /* rim body */
+    ctx.beginPath();
+    ctx.ellipse(cx, p.top, rw, rh, 0, Math.PI, 0);
+    ctx.closePath();
+    var rg = ctx.createLinearGradient(cx - rw, p.top, cx + rw, p.top);
+    rg.addColorStop(0,    '#141414');
+    rg.addColorStop(0.10, '#4a4a4a');
+    rg.addColorStop(0.25, '#b0b0b0');
+    rg.addColorStop(0.40, '#e8e8e8');
+    rg.addColorStop(0.50, '#f5f5f5');
+    rg.addColorStop(0.60, '#e0e0e0');
+    rg.addColorStop(0.75, '#a4a4a4');
+    rg.addColorStop(0.90, '#404040');
+    rg.addColorStop(1,    '#121212');
+    ctx.fillStyle = rg; ctx.fill();
+
+    /* rim top shine */
+    ctx.shadowColor='transparent';
+    ctx.beginPath();
+    ctx.ellipse(cx, p.top - rh*.25, rw*.96, rh*.28, 0, Math.PI, 0);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fill();
+
+    /* rim bottom shadow under inner edge */
+    ctx.beginPath();
+    ctx.ellipse(cx, p.top + rh*.5, rw*.88, rh*.18, 0, 0, Math.PI);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
+
+    ctx.restore();
+  }
+
+  /* ── Interior (visible when lid open) ───────────── */
+  function rInterior(p) {
+    if (lidOpen < 0.05) return;
+    var alpha = Math.min(lidOpen * 2, 1) * 0.92;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    /* dark interior walls */
+    bodyPath(p); ctx.save(); ctx.clip();
+    var ig = ctx.createLinearGradient(cx - p.bw/2, p.top, cx + p.bw/2, p.top);
+    ig.addColorStop(0,   '#0c0c0c');
+    ig.addColorStop(0.15,'#1e1e1e');
+    ig.addColorStop(0.5, '#282828');
+    ig.addColorStop(0.85,'#1e1e1e');
+    ig.addColorStop(1,   '#0c0c0c');
+    ctx.fillStyle = ig;
+    ctx.fillRect(cx - p.bw/2 - 5, p.top, p.bw + 10, p.bh * 0.22);
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  /* ── Boiling liquid ─────────────────────────────── */
   function rLiquid(p) {
     ctx.save();
     bodyPath(p); ctx.clip();
-    var lTop = p.top + p.bh * 0.17;
+    var lTop = p.top + p.bh * 0.16;
+    var intensity = hovering ? 7.5 : 4.5;
+
     ctx.beginPath();
-    ctx.moveTo(cx - p.bw / 2 - 20, p.bot);
-    ctx.lineTo(cx - p.bw / 2 - 20, lTop);
-    for (var x = cx - p.bw / 2 - 20; x <= cx + p.bw / 2 + 20; x += 3) {
+    ctx.moveTo(cx - p.bw/2 - 20, p.bot);
+    ctx.lineTo(cx - p.bw/2 - 20, lTop);
+    for (var x = cx - p.bw/2 - 20; x <= cx + p.bw/2 + 20; x += 3) {
       var wy = lTop
-        + Math.sin((x - cx) / 30 + t * 2.1) * 4.5
-        + Math.sin((x - cx) / 13 + t * 3.3) * 2;
+        + Math.sin((x-cx)/28 + t*2.5) * intensity
+        + Math.sin((x-cx)/11 + t*4.1) * (intensity * 0.5)
+        + Math.sin((x-cx)/55 + t*1.3) * (intensity * 0.3);
       ctx.lineTo(x, wy);
     }
-    ctx.lineTo(cx + p.bw / 2 + 20, p.bot);
+    ctx.lineTo(cx + p.bw/2 + 20, p.bot);
     ctx.closePath();
-    var hs = Math.sin(t * 0.28) * 0.12 + 0.88;
+
+    var hs = Math.sin(t * 0.30) * 0.14 + 0.86;
     var lg = ctx.createLinearGradient(0, lTop, 0, p.bot);
-    lg.addColorStop(0,   'rgb(' + Math.round(220 * hs) + ',28,0)');
-    lg.addColorStop(0.5, 'rgb(' + Math.round(195 * hs) + ',48,0)');
-    lg.addColorStop(1,   'rgb(95,10,0)');
+    lg.addColorStop(0,    'rgb('+ Math.round(230*hs)+',30,0)');
+    lg.addColorStop(0.12, 'rgb('+ Math.round(210*hs)+',50,0)');
+    lg.addColorStop(0.45, 'rgb('+ Math.round(180*hs)+',40,0)');
+    lg.addColorStop(1,    'rgb(80,8,0)');
     ctx.fillStyle = lg; ctx.fill();
+
+    /* foam ring at liquid edge */
     ctx.beginPath();
-    ctx.moveTo(cx - p.bw / 2 - 20, lTop);
-    for (var x = cx - p.bw / 2 - 20; x <= cx + p.bw / 2 + 20; x += 3) {
+    ctx.moveTo(cx - p.bw/2 - 20, lTop);
+    for (var x = cx - p.bw/2 - 20; x <= cx + p.bw/2 + 20; x += 3) {
       var wy = lTop
-        + Math.sin((x - cx) / 30 + t * 2.1) * 4.5
-        + Math.sin((x - cx) / 13 + t * 3.3) * 2;
+        + Math.sin((x-cx)/28 + t*2.5) * intensity
+        + Math.sin((x-cx)/11 + t*4.1) * (intensity*.5)
+        + Math.sin((x-cx)/55 + t*1.3) * (intensity*.3);
       ctx.lineTo(x, wy);
     }
-    ctx.strokeStyle = 'rgba(255,205,145,0.42)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,210,160,0.48)'; ctx.lineWidth = 2.8; ctx.stroke();
+
+    /* surface sheen */
+    var sh = ctx.createLinearGradient(0, lTop, 0, lTop + 30);
+    sh.addColorStop(0, 'rgba(255,150,80,0.18)');
+    sh.addColorStop(1, 'rgba(255,100,40,0)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(cx - p.bw/2 - 5, lTop, p.bw + 10, 30);
+
     ctx.restore();
   }
 
+  /* ── Bubbles ─────────────────────────────────────── */
   function rBubbles(p) {
-    ctx.save();
-    bodyPath(p); ctx.clip();
-    var lTop = p.top + p.bh * 0.17;
+    ctx.save(); bodyPath(p); ctx.clip();
+    var lTop = p.top + p.bh * 0.16;
     bubbles.forEach(function(b) {
       if (b.y < lTop) return;
       ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 6.28);
-      ctx.strokeStyle = 'rgba(255,190,110,' + (b.life * 0.58) + ')';
-      ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,195,120,'+(b.life*.62)+')';
+      ctx.lineWidth = 1.2; ctx.stroke();
+      /* highlight inside bubble */
+      ctx.beginPath(); ctx.arc(b.x - b.r*.3, b.y - b.r*.3, b.r*.3, 0, 6.28);
+      ctx.fillStyle = 'rgba(255,220,180,'+(b.life*.3)+')'; ctx.fill();
     });
     ctx.restore();
   }
 
+  /* ── Lid ─────────────────────────────────────────── */
   function rLid(p) {
     var lidT = p.top - p.lh;
-    var lw   = p.bw * 1.09;
+    var lw   = p.bw * 1.10;
 
-    /* ── Tilt transform ──────────────────────────────────────────
-       Pivot = right edge of lid base (like grabbing with right hand).
-       lidOpen 0→1 : lid lifts up-left and rotates ~75° clockwise,
-       foreshortening via scaleY = cos(angle) makes it look 3-D.
-    ─────────────────────────────────────────────────────────────── */
-    var angle  = lidOpen * 1.30;                   // 0 → ~74.5°
-    var scaleY = Math.max(0.04, Math.cos(angle));  // perspective
-    var pivX   = cx + lw * 0.40;                   // pivot: right edge area
+    var angle  = lidOpen * 1.30;
+    var scaleY = Math.max(0.04, Math.cos(angle));
+    var pivX   = cx + lw * 0.40;
     var pivY   = p.top;
-    var tx     = lidOpen * p.bw * 0.22;            // drift right
-    var ty     = lidOpen * -p.bh * 0.62;           // lift up
-
-    /* gentle bounce only when fully closed */
-    var bounce = (1 - lidOpen) * Math.sin(t * 1.1) * 2;
+    var tx     = lidOpen * p.bw * 0.24;
+    var ty     = lidOpen * -p.bh * 0.65;
+    var bounce = (1 - lidOpen) * Math.sin(t * 1.1) * 2.2;
 
     ctx.save();
     ctx.translate(pivX + tx, pivY + ty);
-    ctx.rotate(angle);           /* clockwise = right side dips */
+    ctx.rotate(angle);
     ctx.scale(1, scaleY);
     ctx.translate(-pivX, -pivY);
 
-    /* lid body */
+    /* lid shadow */
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 16; ctx.shadowOffsetY = -5;
+    ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=22; ctx.shadowOffsetY=8;
+
+    /* lid dome shape */
     ctx.beginPath();
-    ctx.moveTo(cx - lw / 2, p.top + bounce);
-    ctx.bezierCurveTo(cx - lw / 2,    p.top - p.lh * 0.3 + bounce,
-                      cx - lw * 0.28, lidT + bounce,
-                      cx,             lidT - 5 + bounce);
-    ctx.bezierCurveTo(cx + lw * 0.28, lidT + bounce,
-                      cx + lw / 2,    p.top - p.lh * 0.3 + bounce,
-                      cx + lw / 2,    p.top + bounce);
+    ctx.moveTo(cx - lw/2, p.top + bounce);
+    ctx.bezierCurveTo(cx - lw/2,    p.top - p.lh*.35 + bounce,
+                      cx - lw*.30,  lidT + bounce,
+                      cx,           lidT - 7 + bounce);
+    ctx.bezierCurveTo(cx + lw*.30,  lidT + bounce,
+                      cx + lw/2,    p.top - p.lh*.35 + bounce,
+                      cx + lw/2,    p.top + bounce);
     ctx.closePath();
-    var lg = ctx.createLinearGradient(cx - lw / 2, 0, cx + lw / 2, 0);
-    lg.addColorStop(0,    '#680f00');
-    lg.addColorStop(0.13, '#b51e00');
-    lg.addColorStop(0.32, '#df4300');
-    lg.addColorStop(0.50, '#ff5400');
-    lg.addColorStop(0.68, '#df4300');
-    lg.addColorStop(0.87, '#b51e00');
-    lg.addColorStop(1,    '#680f00');
+
+    /* lid gradient — dark coated, matches body */
+    var lg = ctx.createLinearGradient(cx - lw/2, 0, cx + lw/2, 0);
+    lg.addColorStop(0,    '#0e0e0e');
+    lg.addColorStop(0.10, '#2c2c2c');
+    lg.addColorStop(0.24, '#686868');
+    lg.addColorStop(0.38, '#b0b0b0');
+    lg.addColorStop(0.50, '#d8d8d8');
+    lg.addColorStop(0.62, '#a8a8a8');
+    lg.addColorStop(0.76, '#606060');
+    lg.addColorStop(0.90, '#262626');
+    lg.addColorStop(1,    '#0c0c0c');
     ctx.fillStyle = lg; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.restore();
+    ctx.restore(); /* end shadow */
 
-    /* knob */
-    var ky = lidT - 3 + bounce - p.kr * 2;
+    /* lid specular highlight */
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.arc(cx, ky, p.kr * 1.85, 0, 6.28);
-    var kg = ctx.createRadialGradient(cx - p.kr * 0.5, ky - p.kr * 0.5, 0,
-                                      cx, ky, p.kr * 1.85);
-    kg.addColorStop(0, '#f5f5f5');
-    kg.addColorStop(0.45, '#bebebe');
-    kg.addColorStop(1,    '#383838');
-    ctx.fillStyle = kg; ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - lw/2, p.top + bounce);
+    ctx.bezierCurveTo(cx - lw/2, p.top - p.lh*.35 + bounce, cx - lw*.30, lidT + bounce, cx, lidT - 7 + bounce);
+    ctx.bezierCurveTo(cx + lw*.30, lidT + bounce, cx + lw/2, p.top - p.lh*.35 + bounce, cx + lw/2, p.top + bounce);
+    ctx.closePath();
+    ctx.clip();
+    var spg2 = ctx.createRadialGradient(cx + lw*.08, lidT + p.lh*.3 + bounce, 0,
+                                        cx + lw*.08, lidT + p.lh*.3 + bounce, lw*.35);
+    spg2.addColorStop(0,   'rgba(255,255,255,0.40)');
+    spg2.addColorStop(0.4, 'rgba(255,255,255,0.12)');
+    spg2.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.fillStyle = spg2;
+    ctx.fillRect(cx - lw/2, lidT - 10, lw, p.lh + 10);
     ctx.restore();
 
-    ctx.restore(); /* end tilt transform */
+    /* lid metallic outer ring */
+    ctx.beginPath();
+    ctx.moveTo(cx - lw/2, p.top + bounce);
+    ctx.lineTo(cx + lw/2, p.top + bounce);
+    var ring = ctx.createLinearGradient(cx - lw/2, 0, cx + lw/2, 0);
+    ring.addColorStop(0,    'rgba(20,20,20,0.9)');
+    ring.addColorStop(0.15, 'rgba(140,140,140,0.9)');
+    ring.addColorStop(0.50, 'rgba(220,220,220,0.9)');
+    ring.addColorStop(0.85, 'rgba(140,140,140,0.9)');
+    ring.addColorStop(1,    'rgba(20,20,20,0.9)');
+    ctx.strokeStyle = ring; ctx.lineWidth = 5; ctx.lineCap='round'; ctx.stroke();
+
+    /* lid edge outline */
+    ctx.beginPath();
+    ctx.moveTo(cx - lw/2, p.top + bounce);
+    ctx.bezierCurveTo(cx - lw/2, p.top - p.lh*.35 + bounce, cx - lw*.30, lidT + bounce, cx, lidT - 7 + bounce);
+    ctx.bezierCurveTo(cx + lw*.30, lidT + bounce, cx + lw/2, p.top - p.lh*.35 + bounce, cx + lw/2, p.top + bounce);
+    ctx.strokeStyle='rgba(255,255,255,0.20)'; ctx.lineWidth=1.2; ctx.stroke();
+
+    /* knob stem */
+    var ky = lidT - 2 + bounce;
+    ctx.beginPath();
+    ctx.moveTo(cx - p.kr*.6, ky);
+    ctx.lineTo(cx + p.kr*.6, ky);
+    ctx.lineTo(cx + p.kr*.4, ky - p.kr*1.6);
+    ctx.lineTo(cx - p.kr*.4, ky - p.kr*1.6);
+    ctx.closePath();
+    var stemG = ctx.createLinearGradient(cx - p.kr*.6, 0, cx + p.kr*.6, 0);
+    stemG.addColorStop(0,   '#444'); stemG.addColorStop(.5,'#d8d8d8'); stemG.addColorStop(1,'#383838');
+    ctx.fillStyle = stemG; ctx.fill();
+
+    /* knob top sphere */
+    var kty = ky - p.kr*1.6;
+    ctx.save();
+    ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=12;
+    ctx.beginPath(); ctx.arc(cx, kty, p.kr * 2.1, 0, 6.28);
+    var kg = ctx.createRadialGradient(cx - p.kr*.65, kty - p.kr*.65, 0, cx, kty, p.kr*2.1);
+    kg.addColorStop(0,   '#f8f8f8');
+    kg.addColorStop(0.35,'#d0d0d0');
+    kg.addColorStop(0.70,'#909090');
+    kg.addColorStop(1,   '#303030');
+    ctx.fillStyle = kg; ctx.fill();
+    /* knob vent hole */
+    ctx.beginPath(); ctx.arc(cx, kty, p.kr*.55, 0, 6.28);
+    ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fill();
+    ctx.restore();
+
+    ctx.restore(); /* end lid tilt */
   }
 
+  /* ── Steam ───────────────────────────────────────── */
   function rSteam(p) {
     ctx.save();
     steams.forEach(function(s) {
       s.wb += s.ws;
-      var wx = Math.sin(s.wb) * 7;
-      var r  = s.sz * (1.2 + (1 - s.life) * 0.6);
-      var g  = ctx.createRadialGradient(s.x + wx, s.y, 0, s.x + wx, s.y, r);
-      g.addColorStop(0, 'rgba(228,228,228,' + (s.life * 0.36) + ')');
-      g.addColorStop(1, 'rgba(228,228,228,0)');
+      var wx = Math.sin(s.wb) * 8;
+      var r  = s.sz * (1.25 + (1 - s.life) * 0.55);
+      var g  = ctx.createRadialGradient(s.x+wx, s.y, 0, s.x+wx, s.y, r);
+      g.addColorStop(0,   'rgba(235,235,235,'+(s.life*.38)+')');
+      g.addColorStop(0.5, 'rgba(220,220,220,'+(s.life*.18)+')');
+      g.addColorStop(1,   'rgba(220,220,220,0)');
       ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(s.x + wx, s.y, r, 0, 6.28); ctx.fill();
+      ctx.beginPath(); ctx.arc(s.x+wx, s.y, r, 0, 6.28); ctx.fill();
     });
     ctx.restore();
   }
 
-  /* ── Update ───────────────────────────────────── */
+  /* ── Update ──────────────────────────────────────── */
   function update(p) {
     t += 0.016;
+    lidOpen += ((hovering ? 1 : 0) - lidOpen) * 0.065;
 
-    /* ── lid open/close (smooth lerp) ── */
-    var lidTarget = hovering ? 1 : 0;
-    lidOpen += (lidTarget - lidOpen) * 0.065;
-
-    /* ── flames ── */
-    var fr = hovering ? 3.8 : 1.9;
+    var fr = hovering ? 4.2 : 2.1;
     if (Math.random() < fr) flames.push(mkFlame(p));
     flames.forEach(function(f) {
-      f.x += f.vx + Math.sin(t * 4 + f.vx * 8) * 0.35;
-      f.y += f.vy; f.vy *= 0.985; f.life -= f.d;
+      f.x += f.vx + Math.sin(t*4 + f.vx*8) * 0.38;
+      f.y += f.vy; f.vy *= 0.984; f.life -= f.d;
     });
-    if (flames.length > 80) flames = flames.filter(function(f) { return f.life > 0; });
-    else flames = flames.filter(function(f) { return f.life > 0; });
+    flames = flames.filter(function(f) { return f.life > 0; });
+    if (flames.length > 90) flames = flames.slice(-90);
 
-    /* ── steam: gentle trickle normally, massive burst when lid open ── */
-    if (Math.random() < 0.33) steams.push(mkSteam(p));
+    if (Math.random() < 0.35) steams.push(mkSteam(p));
     if (lidOpen > 0.25) {
-      /* 3-6 burst puffs per frame while lid is open */
-      var burstN = Math.ceil(lidOpen * 5);
-      for (var bi = 0; bi < burstN; bi++) {
-        if (Math.random() < lidOpen * 0.9) steams.push(mkBurstSteam(p));
+      var bn = Math.ceil(lidOpen * 6);
+      for (var bi = 0; bi < bn; bi++) {
+        if (Math.random() < lidOpen * 0.88) steams.push(mkBurstSteam(p));
       }
     }
     steams.forEach(function(s) { s.x += s.vx; s.y += s.vy; s.life -= s.d; });
-    if (steams.length > 120) steams = steams.filter(function(s) { return s.life > 0; });
-    else steams = steams.filter(function(s) { return s.life > 0; });
+    steams = steams.filter(function(s) { return s.life > 0; });
+    if (steams.length > 130) steams = steams.slice(-130);
 
-    /* ── sparks ── */
-    if (hovering && Math.random() < 0.42) sparks.push(mkSpark(p));
-    sparks.forEach(function(sp) { sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.15; sp.life -= sp.d; });
+    if (hovering && Math.random() < 0.44) sparks.push(mkSpark(p));
+    sparks.forEach(function(sp) { sp.x += sp.vx; sp.y += sp.vy; sp.vy += 0.16; sp.life -= sp.d; });
     sparks = sparks.filter(function(sp) { return sp.life > 0; });
 
-    /* ── bubbles ── */
-    if (Math.random() < 0.22) bubbles.push(mkBubble(p));
+    var bubRate = hovering ? 0.38 : 0.22;
+    if (Math.random() < bubRate) bubbles.push(mkBubble(p));
     bubbles.forEach(function(b) { b.y += b.vy; b.life -= b.d; });
-    if (bubbles.length > 28) bubbles = bubbles.filter(function(b) { return b.life > 0; });
-    else bubbles = bubbles.filter(function(b) { return b.life > 0; });
+    bubbles = bubbles.filter(function(b) { return b.life > 0; });
+    if (bubbles.length > 35) bubbles = bubbles.slice(-35);
   }
 
-  /* ── Loop ─────────────────────────────────────── */
+  /* ── Render loop ─────────────────────────────────── */
   function loop() {
     var p = P();
     ctx.clearRect(0, 0, W, H);
@@ -7404,6 +7769,8 @@ function initCompare() {
     rBody(p);
     rLiquid(p);
     rBubbles(p);
+    rRim(p);
+    rInterior(p);
     rLid(p);
     rSteam(p);
     update(p);
