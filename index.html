@@ -2,16 +2,79 @@
 <html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>MGC — Make Grace Cooker | Профессиональная Посуда</title>
-  <meta name="description" content="MGC Make Grace Cooker — премиальная антипригарная посуда из высококачественного алюминия с гранитным покрытием. Для всех типов плит.">
+  <meta name="description" content="MGC Make Grace Cooker — премиальная антипригарная посуда из высококачественного алюминия с гранитным покрытием. Воки, сковороды, кастрюли, наборы. Доставка по всему миру.">
+  <meta name="keywords" content="посуда, антипригарная, гранитное покрытие, вок, сковорода, кастрюля, MGC, кухонная посуда">
+  <meta name="author" content="MGC Make Grace Cooker">
+  <meta name="robots" content="index, follow">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍳</text></svg>">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#CC2200">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MGC">
+  <meta name="application-name" content="MGC Cookware">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MGC — Make Grace Cooker | Профессиональная Посуда">
+  <meta property="og:description" content="Премиальная антипригарная посуда с гранитным покрытием. 5 языков, 27+ товаров, доставка по всему миру.">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1585515320310-259814833e62?w=1200&h=630&fit=crop&auto=format&q=80">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://vuunderkind.github.io/mgc-cookware-demo/">
+  <meta property="og:site_name" content="MGC Make Grace Cooker">
+  <meta property="og:locale" content="ru_RU">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MGC — Make Grace Cooker">
+  <meta name="twitter:description" content="Премиальная антипригарная посуда с гранитным покрытием. Купить онлайн.">
+  <meta name="twitter:image" content="https://images.unsplash.com/photo-1585515320310-259814833e62?w=1200&h=630&fit=crop&auto=format&q=80">
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://vuunderkind.github.io/mgc-cookware-demo/">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap">
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": "MGC Make Grace Cooker",
+        "url": "https://vuunderkind.github.io/mgc-cookware-demo/",
+        "description": "Производитель премиальной кухонной посуды с гранитным покрытием",
+        "contactPoint": { "@type": "ContactPoint", "contactType": "customer service", "email": "info@mgccooker.com" }
+      },
+      {
+        "@type": "WebSite",
+        "name": "MGC Make Grace Cooker",
+        "url": "https://vuunderkind.github.io/mgc-cookware-demo/",
+        "potentialAction": { "@type": "SearchAction", "target": "https://vuunderkind.github.io/mgc-cookware-demo/?q={search_term_string}", "query-input": "required name=search_term_string" }
+      }
+    ]
+  }
+  </script>
+
   <style>
 /* ============================================================
    MGC — Make Grace Cooker | World-Class Design System
    ============================================================ */
 
-/* === GOOGLE FONTS === */
-
+/* === FONTS loaded via <link> in <head> === */
 
 /* === CSS VARIABLES / THEME SYSTEM === */
 :root {
@@ -3954,10 +4017,256 @@ html, body, *, *::before, *::after { cursor: none !important; }
 .cp-sort-option.selected { color: var(--red); font-weight: 700; }
 .cp-sort-option.selected::after { content: '✓'; color: var(--red); }
 
+
+/* ============================================================
+   CHECKOUT MODAL
+   ============================================================ */
+#checkout-modal {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: opacity .3s, visibility .3s;
+  padding: 20px;
+}
+#checkout-modal.open { opacity: 1; visibility: visible; }
+.checkout-wrap {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 20px; width: 100%; max-width: 520px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp .35s cubic-bezier(.2,1,.3,1) both;
+}
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.checkout-header {
+  padding: 20px 24px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.checkout-header h2 { font-size: 1.1rem; font-weight: 700; }
+.checkout-close-btn {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface); color: var(--text-muted);
+  font-size: 1.1rem; display: flex; align-items: center; justify-content: center;
+  transition: background .2s;
+}
+.checkout-close-btn:hover { background: var(--surface-hover); }
+/* Steps indicator */
+.checkout-steps {
+  display: flex; gap: 0; padding: 16px 24px; border-bottom: 1px solid var(--border);
+}
+.ck-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  position: relative;
+}
+.ck-step:not(:last-child)::after {
+  content: ''; position: absolute; top: 12px; left: 60%; width: 80%; height: 2px;
+  background: var(--border);
+}
+.ck-step.done:not(:last-child)::after, .ck-step.active:not(:last-child)::after { background: var(--red); }
+.ck-dot {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--bg-card); display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; color: var(--text-muted); z-index: 1; transition: all .3s;
+}
+.ck-step.active .ck-dot { border-color: var(--red); background: var(--red); color: #fff; }
+.ck-step.done .ck-dot { border-color: var(--red); background: var(--red); color: #fff; }
+.ck-label { font-size: 0.68rem; color: var(--text-muted); text-align: center; }
+.ck-step.active .ck-label, .ck-step.done .ck-label { color: var(--red); }
+/* Step panels */
+.checkout-step { display: none; padding: 24px; }
+.checkout-step.active { display: block; }
+/* Review step */
+.ck-review-items { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.ck-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  background: var(--surface); border-radius: 12px;
+}
+.ck-item-emoji { font-size: 1.8rem; width: 44px; text-align: center; }
+.ck-item-name { font-size: 0.9rem; font-weight: 600; flex: 1; }
+.ck-item-qty { font-size: 0.8rem; color: var(--text-muted); }
+.ck-item-price { font-size: 0.95rem; font-weight: 700; color: var(--red); }
+.ck-total-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 0 20px; border-top: 1px solid var(--border); font-weight: 700;
+}
+.ck-total-price { font-size: 1.4rem; color: var(--red); }
+/* Form fields */
+.ck-form { display: flex; flex-direction: column; gap: 14px; }
+.ck-field { display: flex; flex-direction: column; gap: 5px; }
+.ck-field label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.ck-field input, .ck-field select {
+  padding: 12px 14px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--surface);
+  color: var(--text); font-family: inherit; font-size: 0.92rem;
+  transition: border-color .2s; outline: none;
+}
+.ck-field input:focus, .ck-field select:focus { border-color: var(--red); }
+.ck-field input.error { border-color: #e53e3e; }
+.ck-field .ck-err { font-size: 0.75rem; color: #e53e3e; display: none; }
+.ck-field.has-err .ck-err { display: block; }
+.ck-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Card visual */
+.ck-card-visual {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-radius: 14px; padding: 20px; margin-bottom: 16px;
+  color: #fff; font-family: 'Courier New', monospace; position: relative; overflow: hidden;
+}
+.ck-card-visual::before {
+  content: ''; position: absolute; top: -30px; right: -30px;
+  width: 120px; height: 120px; border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+}
+.ck-card-chip { font-size: 1.4rem; margin-bottom: 12px; }
+.ck-card-num { font-size: 1.1rem; letter-spacing: 3px; margin-bottom: 14px; }
+.ck-card-row { display: flex; justify-content: space-between; font-size: 0.75rem; opacity: .7; }
+.ck-card-brand { position: absolute; top: 18px; right: 20px; font-size: 1.6rem; }
+/* Confirmation */
+.ck-confirm { text-align: center; padding: 8px 0 16px; }
+.ck-confirm-icon { font-size: 4rem; margin-bottom: 12px; }
+.ck-confirm h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+.ck-confirm p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 6px; }
+.ck-order-num {
+  display: inline-block; padding: 8px 20px; border-radius: 20px;
+  background: var(--surface); font-family: 'Courier New', monospace; font-size: 0.95rem;
+  font-weight: 700; color: var(--red); margin: 12px 0;
+}
+.ck-delivery {
+  background: var(--surface); border-radius: 12px; padding: 14px 16px; margin: 16px 0;
+  display: flex; align-items: center; gap: 12px; text-align: left;
+}
+.ck-delivery-icon { font-size: 1.6rem; }
+.ck-delivery-text { font-size: 0.85rem; color: var(--text-muted); }
+.ck-delivery-text strong { color: var(--text); display: block; font-size: 0.92rem; }
+/* Buttons */
+.ck-btn {
+  width: 100%; padding: 14px; border-radius: 12px;
+  background: var(--red); color: #fff; font-size: 1rem; font-weight: 700;
+  transition: background .2s, transform .1s, box-shadow .2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-top: 8px;
+}
+.ck-btn:hover { background: var(--red-light); box-shadow: 0 6px 20px rgba(204,34,0,0.35); }
+.ck-btn:active { transform: scale(.98); }
+.ck-btn.loading { opacity: .7; pointer-events: none; }
+.ck-btn-back {
+  background: none; color: var(--text-muted); font-size: 0.85rem;
+  padding: 10px; width: 100%; text-align: center; margin-top: 4px;
+  transition: color .2s;
+}
+.ck-btn-back:hover { color: var(--text); }
+.ck-spinner {
+  width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   WISHLIST
+   ============================================================ */
+.wish-btn {
+  position: absolute; top: 10px; left: 10px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+  font-size: 1rem; display: flex; align-items: center; justify-content: center;
+  transition: background .2s, transform .2s; z-index: 2;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.wish-btn:hover { transform: scale(1.15); background: rgba(204,34,0,0.3); }
+.wish-btn.liked { background: rgba(204,34,0,0.85); border-color: var(--red); }
+.wish-btn.liked::after { content: ''; }
+/* Nav wishlist counter */
+.wish-nav-btn {
+  position: relative; width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); transition: color .2s, background .2s;
+  background: none;
+}
+.wish-nav-btn:hover { color: var(--red); background: var(--surface); }
+.wish-nav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.wish-count {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 16px; height: 16px; border-radius: 8px;
+  background: var(--red); color: #fff;
+  font-size: 0.6rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px;
+}
+.wish-count.hidden { display: none; }
+/* Wishlist drawer */
+#wishlist-drawer {
+  position: fixed; top: 0; right: 0; width: 380px; height: 100vh;
+  background: var(--bg-card); border-left: 1px solid var(--border);
+  z-index: 9001; transform: translateX(100%); transition: transform .35s cubic-bezier(.2,1,.3,1);
+  display: flex; flex-direction: column; box-shadow: var(--shadow-lg);
+}
+#wishlist-drawer.open { transform: none; }
+.wish-drawer-header {
+  padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.wish-drawer-header h2 { font-size: 1.05rem; font-weight: 700; }
+.wish-drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+.wish-empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+.wish-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.wish-card {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  background: var(--surface); border-radius: 12px; margin-bottom: 10px;
+}
+.wish-card-emoji { font-size: 1.8rem; width: 44px; text-align: center; }
+.wish-card-info { flex: 1; min-width: 0; }
+.wish-card-name { font-size: 0.88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wish-card-price { font-size: 0.82rem; color: var(--red); font-weight: 700; margin-top: 2px; }
+.wish-card-add {
+  padding: 7px 14px; border-radius: 8px; background: var(--red); color: #fff;
+  font-size: 0.78rem; font-weight: 700; flex-shrink: 0; transition: opacity .2s;
+}
+.wish-card-add:hover { opacity: .85; }
+.wish-card-remove {
+  padding: 4px 8px; color: var(--text-muted); font-size: 1rem;
+  flex-shrink: 0; transition: color .2s;
+}
+.wish-card-remove:hover { color: #e53e3e; }
+@media (max-width: 480px) {
+  #wishlist-drawer { width: 100%; }
+}
+
+/* ============================================================
+   BACK TO TOP
+   ============================================================ */
+#back-to-top {
+  position: fixed; bottom: 90px; right: 20px;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--red); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(204,34,0,0.45);
+  opacity: 0; transform: translateY(10px) scale(.9);
+  transition: opacity .3s, transform .3s; pointer-events: none;
+  z-index: 8000;
+}
+#back-to-top.visible { opacity: 1; transform: none; pointer-events: auto; }
+#back-to-top:hover { background: var(--red-light); transform: translateY(-2px); }
+#back-to-top svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 768px) { #back-to-top { bottom: 80px; right: 14px; } }
+
+/* ============================================================
+   STOCK BADGE
+   ============================================================ */
+.stock-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.72rem; font-weight: 600; padding: 3px 9px;
+  border-radius: 20px; margin-bottom: 6px;
+}
+.stock-badge.in-stock { background: rgba(34,181,34,0.12); color: #22b54a; }
+.stock-badge.low-stock { background: rgba(255,160,0,0.12); color: #E09A22; }
+.stock-badge::before { content: '●'; font-size: 0.55rem; }
+
+/* ============================================================
+   ENHANCED TOAST
+   ============================================================ */
+#toast {
+  min-width: 280px; max-width: 340px;
+}
+
 </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -4051,6 +4360,12 @@ html, body, *, *::before, *::after { cursor: none !important; }
       <!-- Theme Toggle -->
       <button class="theme-btn" id="theme-btn" aria-label="Toggle theme">
         <span class="theme-icon">☀️</span>
+      </button>
+
+      <!-- Wishlist -->
+      <button class="wish-nav-btn" id="wish-nav-btn" aria-label="Wishlist" onclick="openWishlist()">
+        <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        <span class="wish-count hidden" id="wish-count">0</span>
       </button>
 
       <!-- Cart -->
@@ -4609,7 +4924,7 @@ html, body, *, *::before, *::after { cursor: none !important; }
       <span class="cart-total-label" id="cart-total-label">Итого</span>
       <span class="cart-total-price" id="cart-total-price">$0.00</span>
     </div>
-    <button class="checkout-btn" onclick="alert('Переход к оплате — интеграция платёжной системы')">
+    <button class="checkout-btn" onclick="openCheckout()">
       <span id="checkout-btn-text">Оформить заказ</span>
     </button>
     <a class="continue-shopping" href="#products" onclick="closeCart()" id="cart-continue">Продолжить покупки</a>
@@ -4925,6 +5240,7 @@ const TESTIMONIALS = [
 let currentLang = localStorage.getItem('mgcLang') || 'ru';
 let cart = JSON.parse(localStorage.getItem('mgcCart') || '[]');
 let currentFilter = 'all';
+let wishlist = new Set(JSON.parse(localStorage.getItem('mgcWish') || '[]'));
 
 /* ============================================================
    INITIALIZATION
@@ -4958,6 +5274,8 @@ function initAll() {
   initCatalogPage();
   initMobileNav();
   initMobileProductSwipe();
+  initWishlist();
+  updateWishCount();
 }
 /* Inline script runs after DOM — DOMContentLoaded may have already fired */
 if (document.readyState === 'loading') {
@@ -5225,6 +5543,7 @@ function renderProducts() {
         <div class="tilt-shine"></div>
         <div class="product-visual">
           <button class="compare-toggle-btn" data-cmp="${p.id}" title="Сравнить">⚖</button>
+          <button class="wish-btn ${wishlist.has(p.id)?'liked':''}" data-wish="${p.id}" title="В избранное" onclick="event.stopPropagation();toggleWish(${p.id},this)">${wishlist.has(p.id)?'♥':'♡'}</button>
           <div class="product-art ${p.artClass}">
             <div class="product-art-inner"></div>
             <div class="product-art-ring"></div>
@@ -5236,6 +5555,7 @@ function renderProducts() {
           </div>
         </div>
         <div class="product-info">
+          <span class="stock-badge ${p.rev > 200 ? 'in-stock' : 'low-stock'}">${p.rev > 200 ? (currentLang==='ru'?'В наличии':'In stock') : (currentLang==='ru'?'Мало':'Low stock')}</span>
           <h3 class="product-name">${name}</h3>
           <div class="product-rating">
             <span class="stars">${stars}</span>
@@ -5713,17 +6033,7 @@ function initBanner() {
 /* ============================================================
    NEWSLETTER
    ============================================================ */
-function initNewsletter() {
-  const form = document.getElementById('news-form');
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const input = document.getElementById('news-input');
-    if (!input?.value) return;
-    document.getElementById('news-form-wrap').style.display = 'none';
-    document.getElementById('news-success').classList.add('visible');
-    input.value = '';
-  });
-}
+/* initNewsletter defined below (enhanced version) */
 
 /* ============================================================
    CONTACT FORM
@@ -7102,6 +7412,426 @@ function initCompare() {
   loop();
 })();
 
+/* ============================================================
+   WISHLIST
+   ============================================================ */
+function saveWishlist() {
+  localStorage.setItem('mgcWish', JSON.stringify([...wishlist]));
+}
+function updateWishCount() {
+  const el = document.getElementById('wish-count');
+  if (!el) return;
+  el.textContent = wishlist.size;
+  el.classList.toggle('hidden', wishlist.size === 0);
+}
+function toggleWish(id, btn) {
+  if (wishlist.has(id)) {
+    wishlist.delete(id);
+    if (btn) { btn.classList.remove('liked'); btn.textContent = '♡'; }
+  } else {
+    wishlist.add(id);
+    if (btn) { btn.classList.add('liked'); btn.textContent = '♥'; }
+  }
+  saveWishlist();
+  updateWishCount();
+  renderWishlist();
+}
+window.toggleWish = toggleWish;
+
+function renderWishlist() {
+  const body = document.getElementById('wish-body');
+  if (!body) return;
+  const lang = currentLang;
+  if (wishlist.size === 0) {
+    body.innerHTML = `<div class="wish-empty"><div class="wish-empty-icon">♡</div><p>${lang==='ru'?'Список избранного пуст':'Your wishlist is empty'}</p></div>`;
+    return;
+  }
+  const items = [...wishlist].map(id => {
+    const p = PRODUCTS.find(x => x.id === id) || CATALOG.find(x => x.id === id);
+    if (!p) return '';
+    const name = p.nameKey ? p.nameKey[lang] : (p.name[lang] || p.name['en']);
+    return `
+      <div class="wish-card">
+        <div class="wish-card-emoji">${p.emoji}</div>
+        <div class="wish-card-info">
+          <div class="wish-card-name">${name}</div>
+          <div class="wish-card-price">$${p.price}</div>
+        </div>
+        <button class="wish-card-add" onclick="addToCart(${p.id});showToast('${name.replace(/'/g,"\\'")}','${lang==='ru'?'добавлен в корзину':'added to cart'}')">
+          ${lang==='ru'?'В корзину':'Add'}
+        </button>
+        <button class="wish-card-remove" onclick="toggleWish(${p.id},null);renderWishlist();updateWishCount()" title="Удалить">×</button>
+      </div>`;
+  }).join('');
+  body.innerHTML = items || `<div class="wish-empty"><div class="wish-empty-icon">♡</div><p>Пусто</p></div>`;
+}
+
+function openWishlist() {
+  renderWishlist();
+  document.getElementById('wishlist-drawer')?.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeWishlist() {
+  document.getElementById('wishlist-drawer')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function initWishlist() {
+  document.getElementById('wishlist-drawer')?.addEventListener('click', e => {
+    if (e.target === document.getElementById('wishlist-drawer')) closeWishlist();
+  });
+  renderWishlist();
+}
+window.openWishlist = openWishlist;
+window.closeWishlist = closeWishlist;
+window.renderWishlist = renderWishlist;
+window.updateWishCount = updateWishCount;
+
+/* ============================================================
+   CHECKOUT
+   ============================================================ */
+let ckStep = 1;
+
+function openCheckout() {
+  if (cart.length === 0) return;
+  ckStep = 1;
+  ckRenderReview();
+  ckSetStep(1);
+  const modal = document.getElementById('checkout-modal');
+  if (modal) {
+    modal.classList.add('open');
+    modal.onclick = e => { if (e.target === modal) closeCheckout(); };
+  }
+  document.body.style.overflow = 'hidden';
+  closeCart();
+}
+function closeCheckout() {
+  document.getElementById('checkout-modal')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function clearCart() {
+  cart = [];
+  saveCart();
+  updateCartDisplay();
+  updateMobCartBadge();
+  closeCart();
+}
+window.openCheckout = openCheckout;
+window.closeCheckout = closeCheckout;
+window.clearCart = clearCart;
+
+function ckSetStep(n) {
+  ckStep = n;
+  for (let i = 1; i <= 4; i++) {
+    const panel = document.getElementById(`ck-step-${i}`);
+    const dot   = document.getElementById(`ck-s${i}`);
+    if (panel) panel.classList.toggle('active', i === n);
+    if (dot) {
+      dot.classList.toggle('active', i === n);
+      dot.classList.toggle('done', i < n);
+    }
+  }
+  const titles = { 1:'Обзор заказа', 2:'Адрес доставки', 3:'Оплата', 4:'Заказ оформлен' };
+  const el = document.getElementById('ck-title');
+  if (el) el.textContent = titles[n];
+}
+window.ckGoStep = function(n) { ckSetStep(n); };
+
+function ckRenderReview() {
+  const container = document.getElementById('ck-review-items');
+  const totalEl   = document.getElementById('ck-total');
+  if (!container) return;
+  const lang = currentLang;
+  let total = 0;
+  container.innerHTML = cart.map(item => {
+    const p = PRODUCTS.find(x => x.id === item.id) || CATALOG.find(x => x.id === item.id);
+    if (!p) return '';
+    const name = p.nameKey ? p.nameKey[lang] : (p.name[lang] || p.name['en']);
+    const subtotal = (p.price * item.qty).toFixed(2);
+    total += p.price * item.qty;
+    return `
+      <div class="ck-item">
+        <div class="ck-item-emoji">${p.emoji}</div>
+        <div class="ck-item-name">${name}</div>
+        <div class="ck-item-qty">×${item.qty}</div>
+        <div class="ck-item-price">$${subtotal}</div>
+      </div>`;
+  }).join('');
+  if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+  const payTotal = document.getElementById('ck-pay-total');
+  if (payTotal) payTotal.textContent = `$${total.toFixed(2)}`;
+}
+
+function ckValidateShipping() {
+  const fields = [
+    { id: 'ck-fname', check: v => v.length >= 2 },
+    { id: 'ck-lname', check: v => v.length >= 2 },
+    { id: 'ck-email', check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
+    { id: 'ck-addr',  check: v => v.length >= 5 },
+    { id: 'ck-city',  check: v => v.length >= 2 },
+  ];
+  let ok = true;
+  fields.forEach(f => {
+    const input = document.getElementById(f.id);
+    const wrap  = input?.closest('.ck-field');
+    const valid = input && f.check(input.value.trim());
+    wrap?.classList.toggle('has-err', !valid);
+    input?.classList.toggle('error', !valid);
+    if (!valid) ok = false;
+  });
+  if (ok) ckSetStep(3);
+}
+window.ckValidateShipping = ckValidateShipping;
+
+function ckFormatCard(val) {
+  return val.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim().slice(0,19);
+}
+function ckFormatExpiry(val) {
+  const d = val.replace(/\D/g,'');
+  return d.length >= 2 ? d.slice(0,2) + '/' + d.slice(2,4) : d;
+}
+(function initCardInputs() {
+  document.addEventListener('DOMContentLoaded', () => {
+    const cardNum = document.getElementById('ck-cardnum');
+    const cardHolder = document.getElementById('ck-cardholder');
+    const expiry = document.getElementById('ck-expiry');
+    if (cardNum) cardNum.addEventListener('input', () => {
+      cardNum.value = ckFormatCard(cardNum.value);
+      const display = document.getElementById('ck-card-display');
+      if (display) display.textContent = cardNum.value || '•••• •••• •••• ••••';
+    });
+    if (cardHolder) cardHolder.addEventListener('input', () => {
+      cardHolder.value = cardHolder.value.toUpperCase();
+      const d = document.getElementById('ck-ch-display');
+      if (d) d.textContent = cardHolder.value || 'ИМЯ ДЕРЖАТЕЛЯ';
+    });
+    if (expiry) expiry.addEventListener('input', () => {
+      expiry.value = ckFormatExpiry(expiry.value);
+      const d = document.getElementById('ck-exp-display');
+      if (d) d.textContent = expiry.value || 'MM/YY';
+    });
+  });
+})();
+
+function ckProcessPayment() {
+  const fields = [
+    { id: 'ck-cardnum',    check: v => v.replace(/\s/g,'').length === 16 },
+    { id: 'ck-cardholder', check: v => v.length >= 3 },
+    { id: 'ck-expiry',     check: v => /^\d{2}\/\d{2}$/.test(v) },
+    { id: 'ck-cvv',        check: v => /^\d{3}$/.test(v) },
+  ];
+  let ok = true;
+  fields.forEach(f => {
+    const input = document.getElementById(f.id);
+    const wrap  = input?.closest('.ck-field');
+    const valid = input && f.check(input.value.trim());
+    wrap?.classList.toggle('has-err', !valid);
+    input?.classList.toggle('error', !valid);
+    if (!valid) ok = false;
+  });
+  if (!ok) return;
+
+  const btn = document.getElementById('ck-pay-btn');
+  if (btn) { btn.classList.add('loading'); btn.innerHTML = '<div class="ck-spinner"></div> Обработка...'; }
+
+  setTimeout(() => {
+    const orderNum = 'MGC-' + Math.floor(100000 + Math.random() * 900000);
+    const el = document.getElementById('ck-order-num');
+    if (el) el.textContent = orderNum;
+    // Save to order history
+    const orders = JSON.parse(localStorage.getItem('mgcOrders') || '[]');
+    orders.unshift({ num: orderNum, date: new Date().toLocaleDateString('ru'), total: cart.reduce((s,i) => {
+      const p = PRODUCTS.find(x=>x.id===i.id)||CATALOG.find(x=>x.id===i.id);
+      return s + (p ? p.price*i.qty : 0);
+    }, 0).toFixed(2), items: cart.length });
+    localStorage.setItem('mgcOrders', JSON.stringify(orders.slice(0,10)));
+    ckSetStep(4);
+  }, 2200);
+}
+window.ckProcessPayment = ckProcessPayment;
+
+/* ============================================================
+   NEWSLETTER — enhanced validation
+   ============================================================ */
+function initNewsletter() {
+  const form = document.getElementById('news-form');
+  const input = document.getElementById('news-input');
+  const btn = document.getElementById('news-btn');
+  form?.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = input?.value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      input?.classList.add('error');
+      input?.focus();
+      return;
+    }
+    input?.classList.remove('error');
+    if (btn) btn.textContent = '...';
+    setTimeout(() => {
+      localStorage.setItem('mgcNewsletter', email);
+      document.getElementById('news-form-wrap').style.display = 'none';
+      document.getElementById('news-success').classList.add('visible');
+      if (input) input.value = '';
+    }, 800);
+  });
+  input?.addEventListener('input', () => input.classList.remove('error'));
+  // Restore subscribed state
+  if (localStorage.getItem('mgcNewsletter')) {
+    const wrap = document.getElementById('news-form-wrap');
+    const succ = document.getElementById('news-success');
+    if (wrap) wrap.style.display = 'none';
+    if (succ) succ.classList.add('visible');
+  }
+}
+
+</script>
+
+<!-- ===================================================
+     CHECKOUT MODAL
+     =================================================== -->
+<div id="checkout-modal" role="dialog" aria-modal="true" aria-label="Оформление заказа">
+  <div class="checkout-wrap">
+    <div class="checkout-header">
+      <h2 id="ck-title">Оформление заказа</h2>
+      <button class="checkout-close-btn" onclick="closeCheckout()" aria-label="Закрыть">×</button>
+    </div>
+    <div class="checkout-steps">
+      <div class="ck-step active" id="ck-s1"><div class="ck-dot">1</div><span class="ck-label">Корзина</span></div>
+      <div class="ck-step" id="ck-s2"><div class="ck-dot">2</div><span class="ck-label">Доставка</span></div>
+      <div class="ck-step" id="ck-s3"><div class="ck-dot">3</div><span class="ck-label">Оплата</span></div>
+      <div class="ck-step" id="ck-s4"><div class="ck-dot">✓</div><span class="ck-label">Готово</span></div>
+    </div>
+
+    <!-- Step 1: Review -->
+    <div class="checkout-step active" id="ck-step-1">
+      <div class="ck-review-items" id="ck-review-items"></div>
+      <div class="ck-total-row">
+        <span>Итого</span>
+        <span class="ck-total-price" id="ck-total">$0.00</span>
+      </div>
+      <button class="ck-btn" onclick="ckGoStep(2)">
+        Перейти к доставке <span>→</span>
+      </button>
+    </div>
+
+    <!-- Step 2: Shipping -->
+    <div class="checkout-step" id="ck-step-2">
+      <div class="ck-form" id="ck-ship-form">
+        <div class="ck-row2">
+          <div class="ck-field"><label>Имя *</label><input id="ck-fname" placeholder="Иван" autocomplete="given-name"><span class="ck-err">Введите имя</span></div>
+          <div class="ck-field"><label>Фамилия *</label><input id="ck-lname" placeholder="Петров" autocomplete="family-name"><span class="ck-err">Введите фамилию</span></div>
+        </div>
+        <div class="ck-field"><label>Email *</label><input id="ck-email" type="email" placeholder="ivan@example.com" autocomplete="email"><span class="ck-err">Введите корректный email</span></div>
+        <div class="ck-field"><label>Телефон</label><input id="ck-phone" type="tel" placeholder="+7 (999) 000-00-00" autocomplete="tel"></div>
+        <div class="ck-field"><label>Адрес *</label><input id="ck-addr" placeholder="ул. Ленина, д. 1, кв. 10" autocomplete="street-address"><span class="ck-err">Введите адрес</span></div>
+        <div class="ck-row2">
+          <div class="ck-field"><label>Город *</label><input id="ck-city" placeholder="Москва" autocomplete="address-level2"><span class="ck-err">Введите город</span></div>
+          <div class="ck-field"><label>Страна</label>
+            <select id="ck-country" autocomplete="country">
+              <option value="RU">🇷🇺 Россия</option>
+              <option value="UA">🇺🇦 Украина</option>
+              <option value="BY">🇧🇾 Беларусь</option>
+              <option value="DE">🇩🇪 Германия</option>
+              <option value="US">🇺🇸 США</option>
+              <option value="OTHER">🌍 Другая</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="ck-btn" onclick="ckValidateShipping()">К оплате →</button>
+      <button class="ck-btn-back" onclick="ckGoStep(1)">← Назад к корзине</button>
+    </div>
+
+    <!-- Step 3: Payment -->
+    <div class="checkout-step" id="ck-step-3">
+      <div class="ck-card-visual">
+        <div class="ck-card-brand">💳</div>
+        <div class="ck-card-chip">▬▬</div>
+        <div class="ck-card-num" id="ck-card-display">•••• •••• •••• ••••</div>
+        <div class="ck-card-row">
+          <span>CARDHOLDER<br><strong id="ck-ch-display">ИМЯ ДЕРЖАТЕЛЯ</strong></span>
+          <span>EXPIRES<br><strong id="ck-exp-display">MM/YY</strong></span>
+        </div>
+      </div>
+      <div class="ck-form">
+        <div class="ck-field">
+          <label>Номер карты *</label>
+          <input id="ck-cardnum" placeholder="0000 0000 0000 0000" maxlength="19" autocomplete="cc-number" inputmode="numeric">
+          <span class="ck-err">Введите корректный номер карты</span>
+        </div>
+        <div class="ck-field">
+          <label>Имя держателя *</label>
+          <input id="ck-cardholder" placeholder="IVAN PETROV" autocomplete="cc-name" style="text-transform:uppercase">
+          <span class="ck-err">Введите имя как на карте</span>
+        </div>
+        <div class="ck-row2">
+          <div class="ck-field">
+            <label>Срок действия *</label>
+            <input id="ck-expiry" placeholder="MM/YY" maxlength="5" autocomplete="cc-exp" inputmode="numeric">
+            <span class="ck-err">Формат MM/YY</span>
+          </div>
+          <div class="ck-field">
+            <label>CVV *</label>
+            <input id="ck-cvv" placeholder="•••" maxlength="3" autocomplete="cc-csc" inputmode="numeric" type="password">
+            <span class="ck-err">3 цифры</span>
+          </div>
+        </div>
+      </div>
+      <button class="ck-btn" id="ck-pay-btn" onclick="ckProcessPayment()">
+        Оплатить <span id="ck-pay-total">$0.00</span>
+      </button>
+      <button class="ck-btn-back" onclick="ckGoStep(2)">← Назад к доставке</button>
+    </div>
+
+    <!-- Step 4: Confirmation -->
+    <div class="checkout-step" id="ck-step-4">
+      <div class="ck-confirm">
+        <div class="ck-confirm-icon">🎉</div>
+        <h3>Заказ оформлен!</h3>
+        <p>Спасибо за покупку. Подтверждение отправлено на ваш email.</p>
+        <div class="ck-order-num" id="ck-order-num">MGC-000000</div>
+        <div class="ck-delivery">
+          <div class="ck-delivery-icon">🚚</div>
+          <div class="ck-delivery-text">
+            <strong>Ожидаемая доставка</strong>
+            Курьерская доставка 3–7 рабочих дней
+          </div>
+        </div>
+        <button class="ck-btn" onclick="closeCheckout();clearCart()">
+          Продолжить покупки
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================
+     WISHLIST DRAWER
+     =================================================== -->
+<aside id="wishlist-drawer" role="complementary" aria-label="Избранное">
+  <div class="wish-drawer-header">
+    <h2>♥ Избранное</h2>
+    <button class="checkout-close-btn" onclick="closeWishlist()" aria-label="Закрыть">×</button>
+  </div>
+  <div class="wish-drawer-body" id="wish-body">
+    <div class="wish-empty">
+      <div class="wish-empty-icon">♡</div>
+      <p>Список избранного пуст</p>
+    </div>
+  </div>
+</aside>
+
+<!-- Back to top -->
+<button id="back-to-top" aria-label="Вернуться наверх" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
+<!-- Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
